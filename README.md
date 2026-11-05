@@ -4,6 +4,8 @@ The user acceptance testing guide for Assurity Consulting's new monday.com CRM, 
 
 **Open the guide:** https://natalie955.github.io/assurity-uat-guide/
 
+**How it all fits together (training overview):** https://natalie955.github.io/assurity-uat-guide/training.html — every board and app, what it is for and how they connect.
+
 ## How to use it
 
 1. Open the link above in Chrome, Edge or Safari and sign in to monday.com in another tab.
