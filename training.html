@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>How it all fits together · Assurity monday.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:14px;white-space:nowrap;color:var(--accent);font-size:.85rem;text-transform:uppercase}
+.tabs a{padding:8px 14px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .92rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity · monday.com</span><a href="training.html" aria-current="page">How it all fits together</a><a href="./">UAT test guide</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <ol>
+    <li><a href="#session">Today's session</a></li>
+    <li><a href="#basics">monday.com in one minute</a></li>
+    <li><a href="#where">Where to find everything</a></li>
+    <li><a href="#journey">The journey</a></li>
+    <li><a href="#map">How the boards connect</a></li>
+    <li><a href="#win">1. Winning work</a></li>
+    <li><a href="#quote">2. Quoting and approval</a></li>
+    <li><a href="#deliver">3. Delivering the work</a></li>
+    <li><a href="#resourcing">4. Resourcing</a></li>
+    <li><a href="#renew">5. Renewing contracts</a></li>
+    <li><a href="#history">6. History and reference</a></li>
+    <li><a href="#auto">What happens automatically</a></li>
+    <li><a href="#symbols">Reading column names</a></li>
+    <li><a href="#roles">Who uses what</a></li>
+    <li><a href="#next">Coming next</a></li>
+    <li><a href="#tips">Everyday tips</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · monday.com CRM</p>
+  <h1>How it all fits together</h1>
+  <p class="lead">A guided tour of the new system: every board and app, what it is for, who uses it and how they connect, from the first enquiry to the contract renewal.</p>
+  <p class="byline">Training guide · Prepared by Mutherboard · November 2026</p>
+  <div class="callout"><b>Some boards have new names.</b> Accounts are now <b>Companies</b>, Contacts are now <b>People</b>, and the Site Visit Workflow is now <b>Visits</b>.</div>
+</header>
+
+<section id="session">
+  <h2>Today's session</h2>
+  <p>We will follow one piece of work from enquiry to renewal and stop at each board and app on the way. We use <b>TEST</b> records throughout, so nothing real changes.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Part</th><th>What we cover</th><th>Time</th></tr></thead>
+    <tbody>
+      <tr><td><b>The big picture</b></td><td>Where everything lives, the journey, how the boards link</td><td class="num">10 min</td></tr>
+      <tr><td><b>1. Winning work</b></td><td>Leads, Opportunities, Companies, People, Sites</td><td class="num">15 min</td></tr>
+      <tr><td><b>2. Quoting and approval</b></td><td>Quote Builder, Quotes &amp; Invoices, the client approval page</td><td class="num">20 min</td></tr>
+      <tr><td><b>3. Delivering the work</b></td><td>Order Processor, Visits, Workload Planner, Sample Planner</td><td class="num">25 min</td></tr>
+      <tr><td><b>4–5. Resourcing and renewals</b></td><td>Consultant boards, rules boards, Contract Renewal Hub</td><td class="num">15 min</td></tr>
+      <tr><td><b>Questions</b></td><td>Your questions and what happens next</td><td class="num">10 min</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="basics">
+  <h2>monday.com in one minute</h2>
+  <ul>
+    <li>A <b>board</b> is like a spreadsheet. Each row is an <b>item</b> (a lead, a site, a visit) and each <b>column</b> holds one piece of information about it.</li>
+    <li>Click an item's name to open its <b>item card</b>. It holds every column, plus <b>Updates</b> (the conversation about that item, where you can @mention colleagues), <b>Files</b> and the <b>Activity log</b> (who changed what, and when).</li>
+    <li><b>Link columns</b> (🔗) connect an item to items on other boards. Click a linked item to jump to it.</li>
+    <li><b>Apps</b> are screens built on top of the boards. Each one does a multi-step job, such as building a quote or allocating a visit, and writes the results back to the boards.</li>
+    <li><b>Automations</b> do routine updates for you: set a date, change a status, send a notification. They are listed in <a href="#auto">What happens automatically</a>.</li>
+  </ul>
+</section>
+
+<section id="where">
+  <h2>Where to find everything</h2>
+  <p>Almost everything lives in the <b>CRM (WIP)</b> workspace in the left-hand menu, arranged in folders. The one exception is the <b>Quotes &amp; Invoices</b> board, which is in the <b>CRM</b> workspace because it holds every quote moved across from Sage.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Workspace / folder</th><th>Boards and apps</th></tr></thead>
+    <tbody>
+      <tr><td>CRM (WIP) › <b>Sales &amp; CRM</b></td><td><a href="#b-leads">Leads</a>, <a href="#b-opps">Opportunities</a>, <a href="#b-companies">Companies</a>, <a href="#b-people">People</a>, <a href="#b-sites">Sites</a>, <a href="#b-activities">Activities</a>, <a href="#b-docs">CRM Documents</a></td></tr>
+      <tr><td>CRM (WIP) › <b>Delivery &amp; Operations</b></td><td><a href="#b-visits">Visits</a>, <a href="#b-sla">Report SLA Rules</a>, <a href="#b-samples">Samples by Day</a></td></tr>
+      <tr><td>CRM (WIP) › <b>Resourcing</b></td><td><a href="#b-skills">Consultant Skills &amp; Availability</a>, <a href="#b-comp">Consultant Competencies</a>, <a href="#b-targets">Consultant Targets</a>, <a href="#b-wtr">Work Type Rules</a></td></tr>
+      <tr><td>CRM (WIP) › <b>Marketing &amp; Events</b></td><td><a href="#b-events">Events, Event Attendees</a></td></tr>
+      <tr><td>CRM (WIP) › <b>Vibe Apps</b></td><td><a href="#a-qb">Quote Builder</a>, <a href="#a-renew">Contract Renewal Hub</a>, <a href="#a-workload">Workload Planner</a>, <a href="#a-sample">Sample Planner</a>, <a href="#a-orders">Order Processor</a></td></tr>
+      <tr><td>CRM (WIP), no folder</td><td><a href="#b-comms">Communications</a>, <a href="#b-lab">Lab Capacity</a></td></tr>
+      <tr><td><b>CRM</b> workspace</td><td><a href="#b-quotes">Quotes &amp; Invoices</a></td></tr>
+      <tr><td>Not in monday.com</td><td><a href="#a-portal">Quote Approval Portal</a>: clients open it from the link in their quote email. No login needed.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="journey">
+  <h2>The journey, from enquiry to renewal</h2>
+  <ol class="flow">
+    <li><b>Enquiry comes in</b>Logged as a lead, given an owner, then qualified or rejected.<span class="where">Leads</span></li>
+    <li><b>Deal is opened</b>Qualifying a lead creates an opportunity, linked to its company, contacts and sites.<span class="where">Opportunities</span></li>
+    <li><b>Quote is built</b>One line per site and work type, with visits, pricing, timings and planned lab samples, then a proposal document.<span class="where">Quote Builder → Quotes &amp; Invoices</span></li>
+    <li><b>Client approves</b>The client opens a secure link, approves and gives order details. The deal becomes Won.<span class="where">Quote Approval Portal</span></li>
+    <li><b>Order is processed</b>The Quotes &amp; Orders team checks the order and creates every site visit and sample day.<span class="where">Order Processor → Visits, Samples by Day</span></li>
+    <li><b>Visits are allocated</b>Planners match each visit to the right consultant and days. The report deadline is set.<span class="where">Workload Planner → Visits</span></li>
+    <li><b>Samples are planned</b>Consultants plan lab samples per day; the lab watches daily capacity.<span class="where">Sample Planner → Samples by Day</span></li>
+    <li><b>Visit and report</b>The visit moves through its stages to a published report, tracked against its deadline.<span class="where">Visits</span></li>
+    <li><b>Contract renews</b>Six months before renewal the contract is copied forward, reviewed and made live, and the cycle starts again at step 5.<span class="where">Contract Renewal Hub</span></li>
+  </ol>
+</section>
+
+<section id="map">
+  <h2>How the boards connect</h2>
+  <p>Each box is a board; click one to jump to its explanation. A solid line is a link column, so you can click from one item to the other in monday.com. The coloured labels are the apps that create or update that board.</p>
+  <div class="diagram">
+  <svg viewBox="0 0 1270 560" role="img" aria-labelledby="mapTitle mapDesc">
+    <title id="mapTitle">Map of the main boards and apps</title>
+    <desc id="mapDesc">Leads become Opportunities. Opportunities link to Companies and People; People and Sites belong to Companies. Quote lines on Quotes &amp; Invoices link to an Opportunity, Sites and a recipient, and are built by the Quote Builder and approved in the Quote Approval Portal. Visits link to an Opportunity, a Site and a quote line; the Order Processor creates them and the Workload Planner allocates them. Samples by Day rows link to a Visit and are planned in the Sample Planner within Lab Capacity limits. Consultant boards and rules boards feed allocation. The Contract Renewal Hub works on Opportunities.</desc>
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="d-arrow" d="M0,0 L10,5 L0,10 z"/></marker>
+    </defs>
+    <!-- zones -->
+    <rect class="d-zone" x="8" y="8" width="482" height="544" rx="14"/>
+    <rect class="d-zone" x="522" y="8" width="228" height="544" rx="14"/>
+    <rect class="d-zone" x="782" y="8" width="228" height="544" rx="14"/>
+    <rect class="d-zone" x="1042" y="8" width="220" height="544" rx="14"/>
+    <text class="d-zlabel" x="22" y="34">1 · WIN THE WORK</text>
+    <text class="d-zlabel" x="536" y="34">2 · QUOTE &amp; APPROVE</text>
+    <text class="d-zlabel" x="796" y="34">3 · DELIVER</text>
+    <text class="d-zlabel" x="1056" y="34">4 · RESOURCE</text>
+    <!-- solid links -->
+    <line class="d-edge" x1="210" y1="100" x2="278" y2="172" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="280" y1="200" x2="214" y2="262" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="310" y1="217" x2="203" y2="436" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="115" y1="312" x2="115" y2="436" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="280" y1="471" x2="214" y2="471" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="550" y1="268" x2="474" y2="202" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="575" y1="312" x2="458" y2="436" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="810" y1="281" x2="744" y2="281" marker-end="url(#arr)"/>
+    <path class="d-edge" d="M 860 250 C 860 120, 470 90, 432 151" marker-end="url(#arr)"/>
+    <path class="d-edge" d="M 830 312 C 790 420, 560 520, 474 482" marker-end="url(#arr)"/>
+    <line class="d-edge" x1="990" y1="440" x2="990" y2="316" marker-end="url(#arr)"/>
+    <!-- app-fed (dashed) -->
+    <line class="d-edge d-dash" x1="1060" y1="100" x2="1004" y2="262" marker-end="url(#arr)"/>
+    <line class="d-edge d-dash" x1="1060" y1="281" x2="1004" y2="281" marker-end="url(#arr)"/>
+    <line class="d-edge d-dash" x1="1060" y1="471" x2="1004" y2="471" marker-end="url(#arr)"/>
+    <!-- boards -->
+    <a href="#b-leads"><rect class="d-node" x="20" y="60" width="190" height="62" rx="10"/><text class="d-title" x="115" y="87">Leads</text><text class="d-sub" x="115" y="107">enquiries</text></a>
+    <a href="#b-people"><rect class="d-node" x="20" y="250" width="190" height="62" rx="10"/><text class="d-title" x="115" y="277">People</text><text class="d-sub" x="115" y="297">client contacts</text></a>
+    <a href="#b-companies"><rect class="d-node" x="20" y="440" width="190" height="62" rx="10"/><text class="d-title" x="115" y="467">Companies</text><text class="d-sub" x="115" y="487">client organisations</text></a>
+    <a href="#b-opps"><rect class="d-node" x="280" y="155" width="190" height="62" rx="10"/><text class="d-title" x="375" y="182">Opportunities</text><text class="d-sub" x="375" y="202">deals and contracts</text></a>
+    <a href="#b-sites"><rect class="d-node" x="280" y="440" width="190" height="62" rx="10"/><text class="d-title" x="375" y="467">Sites</text><text class="d-sub" x="375" y="487">buildings we visit</text></a>
+    <a href="#b-quotes"><rect class="d-node" x="550" y="250" width="190" height="62" rx="10"/><text class="d-title" x="645" y="277">Quotes &amp; Invoices</text><text class="d-sub" x="645" y="297">quote lines</text></a>
+    <a href="#b-visits"><rect class="d-node" x="810" y="250" width="190" height="62" rx="10"/><text class="d-title" x="905" y="277">Visits</text><text class="d-sub" x="905" y="297">every site visit</text></a>
+    <a href="#b-samples"><rect class="d-node" x="810" y="440" width="190" height="62" rx="10"/><text class="d-title" x="905" y="467">Samples by Day</text><text class="d-sub" x="905" y="487">planned lab samples</text></a>
+    <a href="#b-skills"><rect class="d-node" x="1060" y="60" width="190" height="62" rx="10"/><text class="d-title" x="1155" y="87">Consultant boards</text><text class="d-sub" x="1155" y="107">skills · competencies · targets</text></a>
+    <a href="#b-wtr"><rect class="d-node" x="1060" y="250" width="190" height="62" rx="10"/><text class="d-title" x="1155" y="277">Rules boards</text><text class="d-sub" x="1155" y="297">work type · report SLA</text></a>
+    <a href="#b-lab"><rect class="d-node" x="1060" y="440" width="190" height="62" rx="10"/><text class="d-title" x="1155" y="467">Lab Capacity</text><text class="d-sub" x="1155" y="487">daily lab limits</text></a>
+    <!-- apps -->
+    <a href="#a-renew"><rect class="d-app" x="290" y="112" width="140" height="26" rx="13"/><text class="d-apptext" x="360" y="129">Renewal Hub</text></a>
+    <a href="#a-qb"><rect class="d-app" x="570" y="330" width="150" height="26" rx="13"/><text class="d-apptext" x="645" y="347">Quote Builder</text></a>
+    <a href="#a-portal"><rect class="d-app" x="570" y="362" width="150" height="26" rx="13"/><text class="d-apptext" x="645" y="379">Approval Portal</text></a>
+    <a href="#a-orders"><rect class="d-app" x="826" y="330" width="150" height="26" rx="13"/><text class="d-apptext" x="901" y="347">Order Processor</text></a>
+    <a href="#a-workload"><rect class="d-app" x="826" y="362" width="150" height="26" rx="13"/><text class="d-apptext" x="901" y="379">Workload Planner</text></a>
+    <a href="#a-sample"><rect class="d-app" x="830" y="514" width="150" height="26" rx="13"/><text class="d-apptext" x="905" y="531">Sample Planner</text></a>
+  </svg>
+  </div>
+  <p class="legend"><span class="lg solid"></span>Link column: click through in monday.com <span class="lg dash"></span>Used by an app to fill in the other board (consultants, report deadlines, lab limits) <span class="lg pill"></span>App</p>
+  <p class="who">Not drawn: <a href="#b-comms">Communications</a>, <a href="#b-docs">CRM Documents</a>, <a href="#b-activities">Activities</a> and <a href="#b-events">Events</a>. These hold history and link to People, Companies and Opportunities.</p>
+
+  <h3>Every link, board by board</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Board</th><th>Links to</th></tr></thead>
+    <tbody>
+      <tr><td><b>Leads</b></td><td>Opportunities (🔗Linked Opportunity), People (🔗Connected Contact)</td></tr>
+      <tr><td><b>Opportunities</b></td><td>Companies (🔗Account), People (🔗Contacts), Quotes &amp; Invoices (🔗Related Quotes), Visits (🔗Related Visit), Leads (🔗Source Lead), CRM Documents, the previous contract (🔗Parent Opportunity)</td></tr>
+      <tr><td><b>Companies</b></td><td>People (🔗Contacts, 🔗Primary Authority Contact), Opportunities, Visits (🔗Site Visits)</td></tr>
+      <tr><td><b>People</b></td><td>Companies (🔗Account), Opportunities (🔗Related Opportunities), Sites, CRM Documents, other People (🔗Same Person, 🔗New Employer)</td></tr>
+      <tr><td><b>Sites</b></td><td>Companies (🔗Account), Visits (🔗Site Visits), Quotes &amp; Invoices, People (🔗Site Contacts, 🔗Primary Site Contact), CRM Documents</td></tr>
+      <tr><td><b>Quotes &amp; Invoices</b></td><td>Opportunities (🔗Opportunity), Sites, People (🔗Recipient), Visits</td></tr>
+      <tr><td><b>Visits</b></td><td>Opportunities (🔗Opportunity), Sites (🔗Site), Quotes &amp; Invoices (🔗Quote), other Visits (🔗Combined Report Number)</td></tr>
+      <tr><td><b>Samples by Day</b></td><td>Visits (🔗Visit)</td></tr>
+      <tr><td><b>Consultant Skills &amp; Availability</b></td><td>Companies (🔗Account Restrictions); Competencies and Targets link back to each consultant</td></tr>
+      <tr><td><b>Report SLA Rules</b></td><td>Companies (🔗Account), for client-specific deadlines</td></tr>
+      <tr><td><b>Communications</b></td><td>People (🔗Contacts), Opportunities (🔗Opportunity)</td></tr>
+      <tr><td><b>CRM Documents</b></td><td>Companies, People, Opportunities, Sites</td></tr>
+      <tr><td><b>Event Attendees</b></td><td>Events, People (🔗Contact), Companies (🔗Account)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 1. WIN ============ -->
+<section id="win">
+  <h2>1. Winning work</h2>
+  <p>Five boards cover the sales side: the enquiry, the deal, and the master records for clients, their people and their buildings.</p>
+
+  <article class="card" id="b-leads">
+    <header><h3>Leads</h3><span class="kind board">Board</span><span class="who">Sales and marketing</span></header>
+    <p class="one"><b>One item is</b> one new enquiry: a website form, phone call, email, referral or webinar sign-up.</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>Log and assign new enquiries</li><li>Qualify them into a deal, or reject them with a reason</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">Lead Status</span> <span class="col">Owner</span> <span class="col">Date Opened</span> <span class="col">Source</span> <span class="col">Qualification Notes</span> <span class="col">Rejection Reason</span>, and the <b>Create a contact</b> button</p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-people">People</a></div></div>
+      <div><h4>Happens automatically</h4><ul><li>New lead: status New, Date Opened today</li><li>Owner assigned: In Progress, owner notified</li><li>Still open after 5 days: owner reminded</li><li>Qualified: an opportunity is created</li></ul></div>
+    </div>
+    <div class="stages"><span>New</span><i>→</i><span>In Progress</span><i>→</i><span>Qualified</span><i>or</i><span>Rejected</span><i>or</i><span>Lost</span></div>
+    <div class="show"><strong>Show them</strong><ol><li>Open Leads and the <b>Lead submission form</b> view: this is the website enquiry form.</li><li>Open a TEST lead's item card and set the Owner. The status moves to In Progress.</li><li>Set it to Qualified, then open the new opportunity on the Opportunities board.</li></ol></div>
+  </article>
+
+  <article class="card" id="b-opps">
+    <header><h3>Opportunities</h3><span class="kind board">Board</span><span class="who">Sales, account managers, finance</span></header>
+    <p class="one"><b>One item is</b> a deal. Once it is Won, the same item becomes the contract record, holding the order, invoicing and renewal details.</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>Track the pipeline by stage</li><li>Hold order and invoicing details</li><li>Start quotes and renewals</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">⚠️Deal Stage</span> <span class="col">Owner</span> <span class="col">🔗Account</span> <span class="col">🔗Contacts</span> <span class="col">Deal Value</span> <span class="col">Expected Close Date</span> <span class="col">Confirmation Type</span> <span class="col">Customer Order Ref</span> <span class="col">Invoice Address</span> <span class="col">Process Order Status</span> <span class="col">🟠Renewal Date</span> <span class="col">🔗Related Quotes</span></p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-companies">Companies</a><a class="chip" href="#b-people">People</a><a class="chip" href="#b-quotes">Quotes &amp; Invoices</a><a class="chip" href="#b-visits">Visits</a><a class="chip" href="#b-leads">Leads</a><a class="chip" href="#b-docs">CRM Documents</a></div></div>
+      <div><h4>Happens automatically</h4><ul><li>New deal: Owner set to whoever created it</li><li>Proposal sent: stage moves to Proposal</li><li>Client approves: stage moves to Won</li><li>Won: Process Order Status set to Awaiting Processing</li><li>Owner reminded 6 months before 🟠Renewal Date and 30 days before PO expiry</li></ul></div>
+    </div>
+    <div class="stages"><span>New</span><i>→</i><span>Discovery</span><i>→</i><span>Proposal</span><i>→</i><span>Negotiation</span><i>→</i><span>Won</span><i>or</i><span>Lost</span></div>
+    <div class="show"><strong>Show them</strong><ol><li>Open the <b>Pipeline</b> view to see deals by stage.</li><li>Open a TEST deal and walk down the item card: the deal, the order, invoicing, the contract.</li><li>Click <span class="col">🔗Account</span> to jump to the company, then come back and open <span class="col">🔗Related Quotes</span>.</li></ol></div>
+  </article>
+
+  <article class="card" id="b-companies">
+    <header><h3>Companies</h3><span class="kind board">Board</span><span class="who">Everyone</span><span class="was">was “Accounts”</span></header>
+    <p class="one"><b>One item is</b> a client organisation. Moved across from Sage (3,849 companies).</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>See a client in one place: contacts, deals and contracts</li><li>Hold client-wide settings the apps use</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">Account Manager</span> <span class="col">🔴Signing Preference</span> (Electronic or Manual Approval: decides how the client approves quotes) <span class="col">SLA Report Delivery (days)</span> <span class="col">🔗Contacts</span> <span class="col">link to Opportunities</span>, plus special instructions and permit flags</p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-people">People</a><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-sites">Sites</a><a class="chip" href="#b-sla">Report SLA Rules</a><a class="chip" href="#b-docs">CRM Documents</a></div></div>
+      <div><h4>Good to know</h4><ul><li>Sites link to their company from the Sites board</li><li>Each client's report deadline can be set here or on Report SLA Rules</li></ul></div>
+    </div>
+    <div class="show"><strong>Show them</strong><ol><li>Search for a client everyone knows and open their company.</li><li>Point out the linked contacts and opportunities, and the Signing Preference.</li></ol></div>
+  </article>
+
+  <article class="card" id="b-people">
+    <header><h3>People</h3><span class="kind board">Board</span><span class="who">Everyone</span><span class="was">was “Contacts”</span></header>
+    <p class="one"><b>One item is</b> a person at a client. Moved across from Sage (9,687 people).</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>Find a contact's details, company and deals</li><li>Choose who receives a quote</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">🔗Account</span> <span class="col">First Name</span> (quote letters and emails greet people by it) <span class="col">Email</span> <span class="col">Phone</span> <span class="col">Job Title</span> <span class="col">Marketing Consent</span> <span class="col">🔗Related Opportunities</span></p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-companies">Companies</a><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-sites">Sites</a><a class="chip" href="#b-comms">Communications</a><a class="chip" href="#b-events">Event Attendees</a></div></div>
+      <div><h4>Good to know</h4><ul><li>Past emails and letters from Sage are on the Communications board, linked to the person</li></ul></div>
+    </div>
+  </article>
+
+  <article class="card" id="b-sites">
+    <header><h3>Sites</h3><span class="kind board">Board</span><span class="who">Everyone</span></header>
+    <p class="one"><b>One item is</b> a building or location we visit. A quote line is always for one site, and every visit happens at a site (16,277 sites).</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>Check address, access and site history</li><li>Hold the notes planners need when allocating</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">Site Code</span> <span class="col">Address / Town / Postcode</span> <span class="col">Region</span> <span class="col">🔗Account</span> <span class="col">Avoid Days</span> <span class="col">Allocation Notes</span> <span class="col">Fire Building Type</span> <span class="col">🔗Site Visits</span> <span class="col">🔗Quotes &amp; Invoices</span></p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-companies">Companies</a><a class="chip" href="#b-visits">Visits</a><a class="chip" href="#b-quotes">Quotes &amp; Invoices</a><a class="chip" href="#b-people">People</a><a class="chip" href="#b-docs">CRM Documents</a></div></div>
+      <div><h4>Good to know</h4><ul><li>The Quote Builder can add a new site and link it to the company while you quote</li><li>Avoid Days and Allocation Notes show in the Workload Planner</li></ul></div>
+    </div>
+    <div class="show"><strong>Show them</strong><ol><li>Open a site: point out its visit history and its quotes.</li><li>Show Allocation Notes and Avoid Days: they appear again when a planner allocates.</li></ol></div>
+  </article>
+</section>
+
+<!-- ============ 2. QUOTE ============ -->
+<section id="quote">
+  <h2>2. Quoting and approval</h2>
+  <p>Quotes are built in the <b>Quote Builder</b> app, stored as lines on the <b>Quotes &amp; Invoices</b> board, and approved by the client in the <b>Quote Approval Portal</b>.</p>
+
+  <article class="card app" id="a-qb">
+    <header><h3>Quote Builder</h3><span class="kind app">App</span><span class="who">Sales and account managers</span></header>
+    <p class="one"><b>Builds and sends proposals.</b> Open it from the Vibe Apps folder and pick the opportunity you are quoting.</p>
+    <div class="facts">
+      <div><h4>Opportunity details</h4><ul><li>Company, contacts, owner, Signing Preference</li><li>Description, close-by date, stage, source</li><li>Lists any fields still needed before you can quote</li></ul></div>
+      <div><h4>Create quote: 6 steps</h4><ol class="tight"><li>Recipient</li><li>Work types</li><li>Frequency (one-off, repeat or contract; visits per year; first visit week)</li><li>Sites</li><li>Costing: hours, rates, lab and equipment costs, prime cost, margin and the selling price per visit</li><li>Review &amp; save: one line per site × work type, all with one Quote No</li></ol></div>
+      <div><h4>The proposal</h4><ul><li><b>Generate</b> the Word document: letter, site schedule, costs, technical specs, T&amp;Cs, order form</li><li>Edit it if needed, then <b>Upload edited file</b> or mark it reviewed</li><li><b>Send</b>: saves the PDF and emails the client a link to view, download and approve it</li><li>Plan the presentation, <b>Record approval</b> for verbal or posted approvals, <b>Revise</b> to make a new version</li></ul></div>
+      <div><h4>Writes to</h4><div class="chips"><a class="chip" href="#b-quotes">Quotes &amp; Invoices</a><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-companies">Companies</a><a class="chip" href="#b-sites">Sites</a><a class="chip" href="#b-activities">Activities</a></div><p class="who">Admin pages hold the standard paragraphs, letter template, tech specs, test methods, email wording and default rates.</p></div>
+    </div>
+    <div class="stages"><span>Working on it</span><i>→</i><span>Generated</span><i>→</i><span>Reviewed</span><i>→</i><span>Sent to client</span><i>→</i><span>Approved</span><i>or</i><span>Declined</span></div>
+    <div class="show"><strong>Show them</strong><ol><li>Open the app and choose a TEST opportunity.</li><li>Click <b>Create quote</b> and walk the six steps with two work types and two sites.</li><li>Generate the document and open it. Point out the site schedule and the order form.</li></ol></div>
+  </article>
+
+  <article class="card" id="b-quotes">
+    <header><h3>Quotes &amp; Invoices</h3><span class="kind board">Board</span><span class="who">Sales, Quotes &amp; Orders team</span><span class="was">in the CRM workspace</span></header>
+    <p class="one"><b>One item is</b> one quote line: one work type at one site. Every line in a proposal shares the same Quote No (25,544 lines, including all quotes from Sage).</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>See every quote line and its status</li><li>Check prices, visits and timings</li><li>Open the proposal documents</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">Quote No</span> <span class="col">Status</span> <span class="col">Work Type(s)</span> <span class="col">Frequency</span> <span class="col">Visit Frequency</span> <span class="col">Number of Visits</span> (total over the contract) <span class="col">Actual Selling Price</span> (always <b>per visit</b>) <span class="col">First Visit — Week Number</span> <span class="col">Planned Days per Visit</span> <span class="col">🟢Planned Samples</span> <span class="col">Quote Proposal Document</span></p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-sites">Sites</a><a class="chip" href="#b-people">People</a><a class="chip" href="#b-visits">Visits</a></div></div>
+      <div><h4>Good to know</h4><ul><li>There is no “+ Add item”: lines are only created in the Quote Builder, so prices and visit numbers stay consistent</li><li>Search by the <b>Quote No</b> column. Ignore “Quote Number”, which monday switches off on large boards</li><li>Older versions of a proposal show as Superseded</li></ul></div>
+    </div>
+  </article>
+
+  <article class="card app" id="a-portal">
+    <header><h3>Quote Approval Portal</h3><span class="kind app">Client page</span><span class="who">Clients (no login)</span></header>
+    <p class="one"><b>Lets the client approve or decline a quote online.</b> They open it from the “View and approve your quote” button in the proposal email.</p>
+    <div class="facts">
+      <div><h4>The client sees</h4><ul><li>Quote No, company, “For the attention of”, the sites</li><li>First-year and contract totals</li><li>Download PDF and Read the Terms &amp; Conditions</li></ul></div>
+      <div><h4>To approve, they give</h4><ul><li>Name and position, and tick to accept the T&amp;Cs, or upload the signed signature page if the company is set to Manual Approval</li><li>Invoice address and invoicing email</li><li>Optionally a PO number, expiry date and PO document</li></ul></div>
+      <div><h4>Then the system</h4><ul><li>Marks the lines Approved (or Declined, with the reason)</li><li>Moves the deal to Won and records the order details</li><li>Posts one update on the deal and notifies the owner</li></ul></div>
+      <div><h4>Good to know</h4><ul><li>Each link works once. After a response it shows “This link is no longer valid”</li><li>Revising a quote cancels the old link; the new version gets its own link when it is sent</li></ul></div>
+    </div>
+    <div class="show"><strong>Show them</strong><ol><li>Open a TEST quote's link in a private browser window, so you see exactly what a client sees.</li></ol></div>
+  </article>
+</section>
+
+<!-- ============ 3. DELIVER ============ -->
+<section id="deliver">
+  <h2>3. Delivering the work</h2>
+  <p>Once a deal is Won, the order is processed into visits, the visits are allocated to consultants, lab samples are planned, and each visit moves through to a published report.</p>
+
+  <article class="card app" id="a-orders">
+    <header><h3>Order Processor</h3><span class="kind app">App</span><span class="who">Quotes &amp; Orders team</span></header>
+    <p class="one"><b>Turns a won order into visits.</b> Every Won deal appears in <b>Orders to process</b>.</p>
+    <div class="facts">
+      <div><h4>Before submitting</h4><ul><li>Check <b>Order details</b>, <b>Lines</b> and <b>Checks</b></li><li>Checks include: confirmation type and PO reference, invoice address, email and frequency, and a frequency and first visit week on every line</li></ul></div>
+      <div><h4>Submit for processing</h4><ul><li>Creates every visit for the contract on Visits, at Ready for Allocation</li><li>Creates the sample day rows on Samples by Day</li><li>Sets the order and report numbers, marks the deal Processed, and notifies the owner and finance</li></ul></div>
+      <div><h4>Or reject</h4><ul><li><b>Reject order</b> with a note: the owner and CS manager are told what to fix</li></ul></div>
+      <div><h4>Good to know</h4><ul><li>Only people in the processing team (set in the app's Settings) can submit or reject</li><li>Processed orders move to <b>History</b></li></ul></div>
+    </div>
+  </article>
+
+  <article class="card" id="b-visits">
+    <header><h3>Visits</h3><span class="kind board">Board</span><span class="who">Planners, consultants, report team, CS</span><span class="was">was “Site Visit Workflow”</span></header>
+    <p class="one"><b>One item is</b> one site visit, from the processed order through to the published report (36,892 visits, including history from Sage).</p>
+    <div class="facts">
+      <div><h4>Use it to</h4><ul><li>Track each visit's stage</li><li>Hold logistics: hotel, permit, escort, parking</li><li>Track the report against its deadline</li></ul></div>
+      <div><h4>Columns to know</h4><p><span class="col">Visit Stage</span> <span class="col">🔗Opportunity</span> <span class="col">🔗Site</span> <span class="col">🔗Quote</span> <span class="col">Visit Value</span> (per visit) <span class="col">Proposed Week Number</span> <span class="col">Planned Start Date</span> <span class="col">🟦Assigned Consultant</span> <span class="col">Report Deadline Date</span> <span class="col">SLA Flag</span></p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-sites">Sites</a><a class="chip" href="#b-quotes">Quotes &amp; Invoices</a><a class="chip" href="#b-samples">Samples by Day</a></div></div>
+      <div><h4>Happens automatically</h4><ul><li>The SLA Flag tracks the report deadline (see <a href="#auto">automations</a>)</li><li>Allocation in the Workload Planner sets the consultant, dates and deadline</li></ul></div>
+    </div>
+    <div class="stages"><span>Ready for Allocation</span><i>→</i><span>Allocated</span><i>→</i><span>Confirmed with Customer</span><i>→</i><span>Visit Carried Out</span><i>→</i><span>Report Written</span><i>→</i><span>Proofreading</span><i>→</i><span>Quality Check</span><i>→</i><span>Published</span></div>
+    <div class="show"><strong>Show them</strong><ol><li>Open the <b>By Stage</b> and <b>By Consultant</b> views.</li><li>Open a visit and click through to its site, opportunity and quote line.</li></ol></div>
+  </article>
+
+  <article class="card app" id="a-workload">
+    <header><h3>Workload Planner</h3><span class="kind app">App</span><span class="who">Planners, allocators, consultants</span></header>
+    <p class="one"><b>Matches each visit to the right consultant and days.</b> It ranks consultants and explains why, and warns about problems, but the allocator always decides.</p>
+    <div class="facts">
+      <div><h4>Screens</h4><ul><li><b>Unassigned jobs</b>: visits waiting for a consultant</li><li><b>Map</b>, <b>Consultant workload</b>, <b>Dashboard</b></li><li><b>Availability</b> and <b>My availability</b> (leave and training)</li><li><b>Allocation history</b>, <b>Admin</b></li></ul></div>
+      <div><h4>Find a consultant</h4><ul><li>Scores skills and competency, account restrictions, distance from the consultant's base, workload, targets and free days</li><li>Warns about leave, clashes, avoid days and overloaded weeks</li></ul></div>
+      <div><h4>On allocation</h4><ul><li>Sets the consultant, planned start date and stage <b>Allocated</b></li><li>Sets the <b>Report Deadline Date</b> from the SLA rules</li><li>Notifies the consultant and moves the visit's sample days</li></ul></div>
+      <div><h4>Uses</h4><div class="chips"><a class="chip" href="#b-visits">Visits</a><a class="chip" href="#b-skills">Consultant boards</a><a class="chip" href="#b-wtr">Work Type Rules</a><a class="chip" href="#b-sla">Report SLA Rules</a><a class="chip" href="#b-sites">Sites</a></div></div>
+    </div>
+    <div class="show"><strong>Show them</strong><ol><li>Open <b>Unassigned jobs</b> and a TEST visit, then <b>Find consultant</b>: read out the reasons behind the top suggestion.</li><li>Allocate it, then show the visit on the Visits board.</li><li>Open <b>My availability</b> and show how a consultant books leave.</li></ol></div>
+  </article>
+
+  <article class="card app" id="a-sample">
+    <header><h3>Sample Planner</h3><span class="kind app">App</span><span class="who">Consultants and the lab</span></header>
+    <p class="one"><b>Plans lab samples per visit day against the lab's daily capacity,</b> so busy days are spotted early. Going over capacity is never blocked: the consultant gives a reason and the lab responds.</p>
+    <div class="facts">
+      <div><h4>Screens</h4><ul><li><b>My samples</b>, <b>Team samples</b></li><li><b>Lab view</b>: day by day capacity and requests</li><li><b>Reports</b>, <b>Admin</b></li></ul></div>
+      <div><h4>How it works</h4><ul><li>Planned samples come from the quote</li><li>Sample dates follow the visit: change dates in the Workload Planner</li><li>Capacity shows green, amber near the limit, red over it</li></ul></div>
+      <div><h4>Over capacity</h4><ul><li>The consultant gives a reason: Capacity Request becomes Requested and the lab is notified</li><li>The lab approves, or asks for the date to move</li></ul></div>
+      <div><h4>Uses</h4><div class="chips"><a class="chip" href="#b-samples">Samples by Day</a><a class="chip" href="#b-lab">Lab Capacity</a><a class="chip" href="#b-visits">Visits</a></div></div>
+    </div>
+  </article>
+
+  <article class="card" id="b-samples">
+    <header><h3>Samples by Day</h3><span class="kind board">Board</span><span class="who">Consultants, lab</span></header>
+    <p class="one"><b>One item is</b> one visit day's planned lab samples. Rows are created when an order is processed and edited in the Sample Planner.</p>
+    <div class="facts">
+      <div><h4>Columns to know</h4><p><span class="col">🔗Visit</span> <span class="col">Sample Date</span> <span class="col">Day Number</span>, one count column per lab test, <span class="col">Sample Status</span> (Planned or Renewal) <span class="col">Capacity Request</span> <span class="col">Lab Response</span> <span class="col">Consultant</span></p></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-visits">Visits</a></div></div>
+    </div>
+  </article>
+
+  <article class="card" id="b-lab">
+    <header><h3>Lab Capacity</h3><span class="kind board">Board</span><span class="who">Lab</span></header>
+    <p class="one"><b>One item is</b> a capacity rule: the lab's daily limit for a sample category, plus any weekday rules, date overrides (closures) and announcements. Managed in the Sample Planner's Admin screen.</p>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Category</th><th>Max per day</th><th>Amber warning when this many are left</th></tr></thead>
+      <tbody>
+        <tr><td>Air</td><td class="num">130</td><td class="num">10</td></tr>
+        <tr><td>CT</td><td class="num">15</td><td class="num">5</td></tr>
+        <tr><td>Non-Pot</td><td class="num">150</td><td class="num">30</td></tr>
+        <tr><td>Pot</td><td class="num">80</td><td class="num">20</td></tr>
+        <tr><td>Pot-PS</td><td class="num">35</td><td class="num">10</td></tr>
+        <tr><td>Leg</td><td class="num">45</td><td class="num">10</td></tr>
+      </tbody>
+    </table></div>
+  </article>
+
+  <article class="card" id="b-sla">
+    <header><h3>Report SLA Rules</h3><span class="kind board">Board</span><span class="who">CS and report team</span></header>
+    <p class="one"><b>One item is</b> a rule for how many days a report has to be published: by work type, and optionally for one client (🔗Account).</p>
+    <div class="facts">
+      <div><h4>How it is used</h4><ul><li>When a visit is allocated, the Workload Planner sets its Report Deadline Date from these rules (or the company's SLA Report Delivery days)</li><li>The SLA Flag on Visits then tracks the deadline</li></ul></div>
+      <div><h4>Connects to</h4><div class="chips"><a class="chip" href="#b-companies">Companies</a><a class="chip" href="#b-visits">Visits</a></div></div>
+    </div>
+  </article>
+</section>
+
+<!-- ============ 4. RESOURCING ============ -->
+<section id="resourcing">
+  <h2>4. Resourcing</h2>
+  <p>Four boards describe the consultants and the rules the Workload Planner uses to match them to visits. Most of this is maintained in the Workload Planner's <b>Admin</b> screen.</p>
+
+  <article class="card" id="b-skills">
+    <header><h3>Consultant Skills &amp; Availability</h3><span class="kind board">Board</span><span class="who">Planners, team leads</span></header>
+    <p class="one"><b>One item is</b> a consultant.</p>
+    <div class="facts">
+      <div><h4>Columns to know</h4><p>Login (their monday.com user), team, services they are qualified for, Fire level, base location, annual target, <span class="col">🔗Account Restrictions</span></p></div>
+      <div><h4>Leave and training</h4><ul><li>Stored as “Unavailable” sub-items under each consultant</li><li>Entered by the consultant in the Workload Planner's <b>My availability</b></li></ul></div>
+    </div>
+  </article>
+
+  <article class="card" id="b-comp">
+    <header><h3>Consultant Competencies</h3><span class="kind board">Board</span><span class="who">Planners, team leads</span></header>
+    <p class="one"><b>One item is</b> a consultant's competency in one service. The Workload Planner scores consultants on these.</p>
+  </article>
+
+  <article class="card" id="b-targets">
+    <header><h3>Consultant Targets</h3><span class="kind board">Board</span><span class="who">Team leads</span></header>
+    <p class="one"><b>One item is</b> a consultant's fee target for one month. The Workload Planner shows booked work against target.</p>
+  </article>
+
+  <article class="card" id="b-wtr">
+    <header><h3>Work Type Rules</h3><span class="kind board">Board</span><span class="who">Planners</span></header>
+    <p class="one"><b>One item is</b> a work type's planning rules: lead time and the minimum daily return value. Visits below the minimum are flagged, never blocked.</p>
+  </article>
+</section>
+
+<!-- ============ 5. RENEW ============ -->
+<section id="renew">
+  <h2>5. Renewing contracts</h2>
+  <article class="card app" id="a-renew">
+    <header><h3>Contract Renewal Hub</h3><span class="kind app">App</span><span class="who">Account and CS managers, QC reviewers</span></header>
+    <p class="one"><b>Renews a contract.</b> Six months before a contract's 🟠Renewal Date the owner is reminded to start. The renewal is a new opportunity linked to the old one.</p>
+    <div class="facts">
+      <div><h4>Steps</h4><ol class="tight"><li><b>Renewal urgency</b> or <b>Choose a contract</b></li><li><b>Copy Forward</b>: creates the renewal opportunity with every active line in the new period</li><li>Apply a <b>Price Change</b> (with Undo), add or remove lines, run the anomaly check</li><li><b>Submit for quality check</b>: the reviewer passes it or returns it with feedback</li><li><b>Send proposal to customer</b></li><li><b>Make Contract Live</b>: record the acceptance and PO</li></ol></div>
+      <div><h4>Make Contract Live</h4><ul><li>Renewal becomes Won and Live, and goes to the Order Processor (Awaiting Processing)</li><li>The old contract is marked Reported</li><li>The people set in the app's Settings are notified</li></ul></div>
+      <div><h4>Uses</h4><div class="chips"><a class="chip" href="#b-opps">Opportunities</a><a class="chip" href="#b-quotes">Quotes &amp; Invoices</a></div><p class="who">Columns marked 🟠 belong to this app.</p></div>
+    </div>
+    <div class="stages"><span>Not Started</span><i>→</i><span>In Progress</span><i>→</i><span>Pending Quality Check</span><i>→</i><span>Send Documents to Customer</span><i>→</i><span>Waiting for Renewal</span><i>→</i><span>Live</span></div>
+  </article>
+</section>
+
+<!-- ============ 6. HISTORY ============ -->
+<section id="history">
+  <h2>6. History and reference</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Board</th><th>One item is</th><th>Links to</th></tr></thead>
+    <tbody>
+      <tr id="b-comms"><td><b>Communications</b></td><td>An email or letter from Sage (34,383)</td><td>People, Opportunities</td></tr>
+      <tr id="b-docs"><td><b>CRM Documents</b></td><td>A document from Sage, such as a report, letter or PO (13,046)</td><td>Companies, People, Opportunities, Sites</td></tr>
+      <tr id="b-activities"><td><b>Activities</b></td><td>A call, meeting or email logged against an item. The Quote Builder logs each sent quote here. Emails and meetings will appear once Outlook is connected.</td><td>People, Opportunities, Leads, Companies</td></tr>
+      <tr id="b-events"><td><b>Events</b> and <b>Event Attendees</b></td><td>A seminar or webinar (34), and each person who registered or attended (4,022)</td><td>People, Companies</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="auto">
+  <h2>What happens automatically</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>When</th><th>The system does this</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>A lead is added</td><td>Lead Status New, Date Opened today</td><td>Leads</td></tr>
+      <tr><td>A lead is given an owner</td><td>Status In Progress; owner notified to make contact within 2 working days</td><td>Leads</td></tr>
+      <tr><td>A lead is still New or In Progress after 5 days</td><td>Owner reminded to qualify or reject it</td><td>Leads</td></tr>
+      <tr><td>A lead is Qualified</td><td>An opportunity is created with the lead's name, owner and contact</td><td>Leads → Opportunities</td></tr>
+      <tr><td>A lead is Rejected or Lost</td><td>The date is recorded and Lead Outcome set to Closed</td><td>Leads</td></tr>
+      <tr><td>An opportunity is created</td><td>Owner set to the person who created it</td><td>Opportunities</td></tr>
+      <tr><td>A proposal is sent</td><td>Lines become Sent to client; Deal Stage moves to Proposal</td><td>Quote Builder</td></tr>
+      <tr><td>The client approves</td><td>Lines Approved; deal Won with the order details; one update on the deal; owner notified</td><td>Approval Portal</td></tr>
+      <tr><td>Deal Stage becomes Won</td><td>Process Order Status Awaiting Processing: the order appears in the Order Processor</td><td>Opportunities</td></tr>
+      <tr><td>An order is submitted</td><td>Visits and sample day rows created; deal Processed; owner and finance notified</td><td>Order Processor</td></tr>
+      <tr><td>A visit is allocated</td><td>Consultant, dates, stage Allocated and Report Deadline Date set; consultant notified</td><td>Workload Planner</td></tr>
+      <tr><td>5 days before a report deadline</td><td>SLA Flag Due Soon; consultant notified</td><td>Visits</td></tr>
+      <tr><td>The day after a missed deadline</td><td>SLA Flag Overdue; consultant notified</td><td>Visits</td></tr>
+      <tr><td>A visit is Published</td><td>SLA Flag Met if on time, Late if it went overdue</td><td>Visits</td></tr>
+      <tr><td>Samples go over the lab limit</td><td>Capacity Request Requested; lab notified</td><td>Sample Planner</td></tr>
+      <tr><td>6 months before a contract's 🟠Renewal Date</td><td>Owner reminded to start the renewal</td><td>Opportunities</td></tr>
+      <tr><td>30 days before 🟠PO Expiry Date</td><td>Owner reminded the PO is expiring</td><td>Opportunities</td></tr>
+    </tbody>
+  </table></div>
+  <p class="who">Date-based automations run once each morning.</p>
+</section>
+
+<section id="symbols">
+  <h2>Reading column names</h2>
+  <p>The symbol at the start of a column name tells you where its information comes from. Columns without a symbol are filled in by hand.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>🔗</td><td>A link to an item on another board. Click it to jump there.</td></tr>
+      <tr><td>✨</td><td>A mirror: shows a value from a linked board. Change it on the original board.</td></tr>
+      <tr><td>🔴</td><td>Filled by the Quote Builder</td></tr>
+      <tr><td>🟠</td><td>Filled by the Contract Renewal Hub</td></tr>
+      <tr><td>🟣</td><td>Filled by the Workload Planner</td></tr>
+      <tr><td>🟢</td><td>Filled by the Sample Planner</td></tr>
+      <tr><td>🟦 🟩 🟨 🟧 🟪 🟫</td><td>Will be filled by connected systems (SVR, Assurity Plus 2.0, the lab system, HiBob, the website, GoToWebinar). Until then, fill these in by hand where needed.</td></tr>
+      <tr><td>⚠️</td><td>Still being set up. Use it, but tell us if the options look wrong.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="roles">
+  <h2>Who uses what</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Role</th><th>Boards</th><th>Apps</th></tr></thead>
+    <tbody>
+      <tr><td><b>Sales and account managers</b></td><td>Leads, Opportunities, Companies, People, Sites</td><td>Quote Builder, Contract Renewal Hub</td></tr>
+      <tr><td><b>Quotes &amp; Orders team</b></td><td>Opportunities, Quotes &amp; Invoices</td><td>Order Processor</td></tr>
+      <tr><td><b>Planners and allocators</b></td><td>Visits, Sites, consultant and rules boards</td><td>Workload Planner</td></tr>
+      <tr><td><b>Consultants</b></td><td>Visits</td><td>Workload Planner (My availability), Sample Planner</td></tr>
+      <tr><td><b>Lab</b></td><td>Lab Capacity, Samples by Day</td><td>Sample Planner (Lab view)</td></tr>
+      <tr><td><b>Report team and CS</b></td><td>Visits, Report SLA Rules, Companies</td><td>—</td></tr>
+      <tr><td><b>Finance</b></td><td>Opportunities (order and invoicing details)</td><td>Notified by the Order Processor</td></tr>
+      <tr><td><b>Clients</b></td><td>—</td><td>Quote Approval Portal</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="next">
+  <h2>Coming next</h2>
+  <ul>
+    <li><b>Outlook email and calendar.</b> Once mailboxes are connected, emails and meetings appear on each item's timeline, and quotes are sent from the Assurity mailbox.</li>
+    <li><b>Connected systems.</b> SVR, Assurity Plus 2.0, the lab system, HiBob, the website form and GoToWebinar will feed the columns marked 🟦 🟩 🟨 🟧 🟪 🟫.</li>
+    <li><b>Dashboards.</b> Reporting dashboards that replace SQL Reporting Services: pipeline, consultant performance, allocation, report turnaround, renewals and sales activity.</li>
+  </ul>
+</section>
+
+<section id="tips">
+  <h2>Everyday tips</h2>
+  <dl class="faq">
+    <dt>Find anything</dt><dd>Use the search at the top of monday.com, or the search box on a board. On a board, the <b>Person</b> filter shows only your items.</dd>
+    <dt>Talk about an item</dt><dd>Open the item card and write in <b>Updates</b>. Type @ and a name to notify a colleague.</dd>
+    <dt>Undo a mistake</dt><dd>Open the item card's <b>Activity log</b> to see the previous value, and change it back.</dd>
+    <dt>Notifications</dt><dd>The bell at the top shows anything assigned to you, reminders and @mentions.</dd>
+    <dt>On the move</dt><dd>The monday.com mobile app shows the same boards with the same login, so consultants can check and update visits on site.</dd>
+    <dt>Practise safely</dt><dd>Start any practice record with <b>TEST –</b> and your name, and never send quotes to real clients while practising.</dd>
+  </dl>
+</section>
+</main>
+</div>
+</body>
+</html>
