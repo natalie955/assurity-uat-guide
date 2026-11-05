@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Assurity monday.com UAT Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#start">Before you start</a></li>
+    <li><a href="#overview">How it all fits together</a></li>
+    <li><a href="#leads">A. Leads <span class="count" data-count="leads"></span></a></li>
+    <li><a href="#records">B. Accounts, Contacts, Sites <span class="count" data-count="records"></span></a></li>
+    <li><a href="#opps">C. Opportunities <span class="count" data-count="opps"></span></a></li>
+    <li><a href="#quotes">D. Quote Builder <span class="count" data-count="quotes"></span></a></li>
+    <li><a href="#portal">E. Client approval <span class="count" data-count="portal"></span></a></li>
+    <li><a href="#orders">F. Order Processor <span class="count" data-count="orders"></span></a></li>
+    <li><a href="#visits">G. Site Visit Workflow <span class="count" data-count="visits"></span></a></li>
+    <li><a href="#workload">H. Workload Planner <span class="count" data-count="workload"></span></a></li>
+    <li><a href="#samples">I. Sample Planner <span class="count" data-count="samples"></span></a></li>
+    <li><a href="#sla">J. Report deadlines <span class="count" data-count="sla"></span></a></li>
+    <li><a href="#renewals">K. Contract renewals <span class="count" data-count="renewals"></span></a></li>
+    <li><a href="#help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · monday.com CRM</p>
+  <h1>User Acceptance Testing guide</h1>
+  <p class="lead">A walk-through of the new system from the first enquiry to the contract renewal, board by board, with the tests we need you to run before go-live.</p>
+  <p class="byline">Prepared by Mutherboard · October 2026 · Version 1</p>
+</header>
+
+<section id="start">
+  <h2>Before you start</h2>
+  <p>This guide explains how each part of the system works and then asks you to try it. You do not need to know monday.com already. Work through the sections in order if you can, because each one picks up the test record from the one before.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>Your monday.com login. Accept the invitation email from monday.com if you have not done so yet.</li>
+    <li>Access to the <b>CRM</b> workspace. You will find the boards and apps in the left-hand menu.</li>
+    <li>About 3 to 4 hours for the full run, or 30 to 45 minutes per section.</li>
+    <li>For some tests, a colleague. These are marked with the role you need (for example, a lab user or an allocator).</li>
+  </ul>
+  <h3>Test data rules</h3>
+  <ul>
+    <li>Start every record you create with <b>TEST –</b> and your first name, for example <i>TEST – Sam – Riverside Offices</i>. This keeps test data easy to find and delete.</li>
+    <li>Do not change real client records. You can open and read them, but make changes only on your TEST records.</li>
+    <li>Do not send quotes or emails to real clients. Use your own email address as the client contact.</li>
+  </ul>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date. monday.com checks dates each morning, so set the date as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="overview">
+  <h2>How it all fits together</h2>
+  <p>Everything in the system is stored on <b>boards</b>. A board is like a spreadsheet: each row is an item (a lead, a site, a visit) and each column holds one piece of information about it. Boards are linked, so a visit knows its site, its quote and its contract.</p>
+  <p>On top of the boards sit six <b>apps</b>. An app is a screen that does a multi-step job for you, such as building a quote or allocating a visit, and writes the results back to the boards.</p>
+
+  <h3>The journey, from enquiry to renewal</h3>
+  <ol class="flow">
+    <li><b>Enquiry comes in</b>Logged as a lead, given an owner, then qualified or rejected.<span class="where">Leads board</span></li>
+    <li><b>Deal is opened</b>A qualified lead becomes an opportunity, linked to its account, contacts and sites.<span class="where">Opportunities board</span></li>
+    <li><b>Quote is built</b>Lines per site and work type, with visits, pricing, timings and planned lab samples.<span class="where">Quote Builder app</span></li>
+    <li><b>Client approves</b>The client opens a secure link, approves and gives order details. The deal becomes Won.<span class="where">Approval portal</span></li>
+    <li><b>Order is processed</b>The Quotes &amp; Orders team checks the order and creates every site visit.<span class="where">Order Processor app</span></li>
+    <li><b>Visits are allocated</b>Planners match each visit to the right consultant and days.<span class="where">Workload Planner app</span></li>
+    <li><b>Samples are planned</b>Consultants plan lab samples per day; the lab watches capacity.<span class="where">Sample Planner app</span></li>
+    <li><b>Visit and report</b>The visit moves through its stages to a published report, tracked against its deadline.<span class="where">Site Visit Workflow board</span></li>
+    <li><b>Contract renews</b>Six months before renewal, the contract is copied forward, reviewed and made live, and the cycle starts again at step 5.<span class="where">Contract Renewal Hub app</span></li>
+  </ol>
+
+  <h3>The six apps</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>App</th><th>Who uses it</th><th>What it does</th><th>Boards it updates</th></tr></thead>
+    <tbody>
+      <tr><td><b>Quote Builder</b></td><td>Sales, account managers</td><td>Builds and sends proposals; records approvals</td><td>Quotes &amp; Invoices, Opportunities</td></tr>
+      <tr><td><b>Quote Approval Portal</b></td><td>Clients (no login)</td><td>Lets the client approve or decline a quote online</td><td>Quotes &amp; Invoices, Opportunities</td></tr>
+      <tr><td><b>Order Processor</b></td><td>Quotes &amp; Orders team</td><td>Checks won orders and creates the site visits</td><td>Opportunities, Site Visit Workflow, Samples by Day</td></tr>
+      <tr><td><b>Workload Planner</b></td><td>Planners, allocators, consultants</td><td>Allocates visits, balances workload, sets report deadlines</td><td>Site Visit Workflow, Samples by Day</td></tr>
+      <tr><td><b>Sample Planner</b></td><td>Consultants, lab</td><td>Plans lab samples per day against lab capacity</td><td>Samples by Day, Lab Capacity</td></tr>
+      <tr><td><b>Contract Renewal Hub</b></td><td>Account and CS managers, QC reviewers</td><td>Copies contracts forward, applies price changes, runs QC, makes renewals live</td><td>Opportunities, Quotes &amp; Invoices</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>What the symbols in column names mean</h3>
+  <p>The symbol at the start of a column name tells you where its information comes from. Columns without a symbol are filled in by hand.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Symbol</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>🔗</td><td>A link to an item on another board. Click it to jump there.</td></tr>
+      <tr><td>✨</td><td>A mirror: shows a value from a linked board. Change it on the original board.</td></tr>
+      <tr><td>🔴</td><td>Filled by the Quote Builder</td></tr>
+      <tr><td>🟠</td><td>Filled by the Contract Renewal Hub</td></tr>
+      <tr><td>🟣</td><td>Filled by the Workload Planner</td></tr>
+      <tr><td>🟢</td><td>Filled by the Sample Planner</td></tr>
+      <tr><td>🟦 🟩 🟨 🟧 🟪 🟫</td><td>Will be filled by connected systems later (SVR, Assurity Plus, the lab system, HiBob, the website, GoToWebinar). Until then, fill these in by hand where needed.</td></tr>
+      <tr><td>⚠️</td><td>Still being set up. You can use it, but tell us if the options look wrong.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ A. LEADS ============ -->
+<section id="leads" data-section="leads">
+  <div class="sechead"><h2>A. Leads</h2><span class="kind board">Board</span><span class="who">Sales and marketing</span></div>
+  <p>The Leads board holds new enquiries before anyone knows whether they will become work: website forms, webinar sign-ups, calls and referrals. Each lead has an owner who contacts the person and then decides whether it is worth pursuing.</p>
+  <h3>How a lead moves</h3>
+  <div class="stages"><span>New</span><i>→</i><span>In Progress</span><i>→</i><span>Qualified</span><i>or</i><span>Rejected</span><i>or</i><span>Lost</span></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>When this happens</th><th>The system does this</th></tr></thead>
+    <tbody>
+      <tr><td>A lead is added</td><td>Lead Status set to New, Date Opened set to today</td></tr>
+      <tr><td>An Owner is assigned to a New lead</td><td>Status moves to In Progress; the owner is notified to make contact within 2 working days</td></tr>
+      <tr><td>5 days after Date Opened, still New or In Progress</td><td>The owner gets a reminder to qualify or reject it</td></tr>
+      <tr><td>Status set to Qualified</td><td>An opportunity is created on the Opportunities board, linked back to the lead in its 🔗Source Lead column; Lead Outcome set to Opportunity</td></tr>
+      <tr><td>Status set to Rejected</td><td>Date Lead Rejected set to today; Lead Outcome set to Closed</td></tr>
+      <tr><td>Status set to Lost</td><td>Closed Date set to today; Lead Outcome set to Closed</td></tr>
+    </tbody>
+  </table></div>
+  <p>Useful columns: <span class="col">Owner</span>, <span class="col">Qualification Notes</span>, <span class="col">Rejection Reason</span>, <span class="col">🟪Service Interest</span>, <span class="col">Source</span>, and the <b>Create a contact</b> button, which copies the person onto the Contacts board.</p>
+
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>Add a new lead</h4><span class="role">Sales</span></header>
+      <ol><li>Open the <b>Leads</b> board and click <b>New lead</b> (or <b>+ Add item</b> at the bottom of a group).</li>
+      <li>Name it <i>TEST – [your name] – Lead 1</i>. Fill in First Name, Last Name, Company Name, your own email address, a phone number and a Service Interest.</li>
+      <li>Leave Owner empty.</li></ol>
+      <p class="expect"><strong>You should see</strong>Lead Status changes to <b>New</b> and Date Opened shows today’s date within a few seconds.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>Assign an owner</h4><span class="role">Sales</span></header>
+      <ol><li>On <i>Lead 1</i>, set <b>Owner</b> to yourself.</li><li>Check the bell icon (notifications) at the top of monday.com.</li></ol>
+      <p class="expect"><strong>You should see</strong>Lead Status changes to <b>In Progress</b>, and you receive a “Lead assigned to you” notification asking you to make contact within 2 working days.</p></article>
+
+    <article class="test" data-id="A3"><header><span class="tid">A3</span><h4>Log your contact with the lead</h4><span class="role">Sales</span></header>
+      <ol><li>Open <i>Lead 1</i> (click its name). Add a short note in <b>Qualification Notes</b>.</li>
+      <li>In the item’s <b>Activities timeline</b>, log a phone call with a one-line summary.</li></ol>
+      <p class="expect"><strong>You should see</strong>The note is saved, the call appears on the timeline with today’s date, and Last interaction updates.</p></article>
+
+    <article class="test" data-id="A4"><header><span class="tid">A4</span><h4>Create a contact from the lead</h4><span class="role">Sales</span></header>
+      <ol><li>On <i>Lead 1</i>, click the <b>Create a contact</b> button.</li><li>Open the <b>Contacts</b> board and search for the name.</li></ol>
+      <p class="expect"><strong>You should see</strong>A new contact with the lead’s name, email and phone.</p></article>
+
+    <article class="test" data-id="A5"><header><span class="tid">A5</span><h4>Qualify the lead</h4><span class="role">Sales</span></header>
+      <ol><li>Set <i>Lead 1</i>’s <b>Lead Status</b> to <b>Qualified</b>.</li><li>Open the <b>Opportunities</b> board and search for the lead’s name. Open the new opportunity and look at its <b>🔗Source Lead</b> column.</li></ol>
+      <p class="expect"><strong>You should see</strong>A new opportunity with the lead’s name, whose 🔗Source Lead links back to <i>Lead 1</i>. On the lead, Lead Outcome changes to <b>Opportunity</b>. Keep this opportunity: you will use it from Section C onwards.</p></article>
+
+    <article class="test" data-id="A6"><header><span class="tid">A6</span><h4>Reject a lead</h4><span class="role">Sales</span></header>
+      <ol><li>Add <i>TEST – [your name] – Lead 2</i>. Type a Rejection Reason (e.g. “Outside our service area”).</li><li>Set Lead Status to <b>Rejected</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Date Lead Rejected shows today and Lead Outcome changes to <b>Closed</b>.</p></article>
+
+    <article class="test" data-id="A7"><header><span class="tid">A7</span><h4>Mark a lead as lost</h4><span class="role">Sales</span></header>
+      <ol><li>Add <i>TEST – [your name] – Lead 3</i> and set Lead Status to <b>Lost</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Closed Date shows today and Lead Outcome changes to <b>Closed</b>.</p></article>
+
+    <article class="test" data-id="A8"><header><span class="tid">A8</span><h4>Five-day reminder</h4><span class="tag">Overnight</span><span class="role">Sales</span></header>
+      <ol><li>Add <i>TEST – [your name] – Lead 4</i> and assign yourself as Owner.</li><li>Change its <b>Date Opened</b> to 4 days ago, so the fifth day is tomorrow.</li><li>Check your notifications tomorrow morning.</li></ol>
+      <p class="expect"><strong>You should see</strong>A reminder that the lead has been open for 5 days and should be qualified or rejected.</p></article>
+  </div>
+</section>
+
+<!-- ============ B. RECORDS ============ -->
+<section id="records" data-section="records">
+  <div class="sechead"><h2>B. Accounts, Contacts and Sites</h2><span class="kind board">Boards</span><span class="who">Everyone</span></div>
+  <p>These three boards are the master records, moved across from Sage. Everything else links back to them.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Board</th><th>One item is</th><th>Holds</th></tr></thead>
+    <tbody>
+      <tr><td><b>Accounts</b></td><td>A client organisation</td><td>Status, account manager and CS manager, report delivery preferences, SLA days, special instructions, links to its contacts, opportunities and visits</td></tr>
+      <tr><td><b>Contacts</b></td><td>A person</td><td>Their account, email and phone, job title, key contact flag, marketing preferences</td></tr>
+      <tr><td><b>Sites</b></td><td>A building or location we visit</td><td>Site code, address, region, access and parking notes, risk rating, the planning notes used when allocating visits (Avoid Days, Allocation Notes, Fire Building Type), and its visit history</td></tr>
+    </tbody>
+  </table></div>
+  <p>One account can have many sites and contacts. A quote line is always for one site, and every visit is linked to the site it happens at.</p>
+
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>Check a real account you know well</h4><span class="role">Everyone</span></header>
+      <ol><li>Search monday.com for a client you work with. Open their item on the <b>Accounts</b> board.</li>
+      <li>Look at the linked contacts, opportunities and site visits.</li></ol>
+      <p class="expect"><strong>You should see</strong>The details match what you know from Sage: account manager, contacts, current contracts and recent visits. Note anything missing or wrong (read only; do not change it).</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Check one of that client’s sites</h4><span class="role">Everyone</span></header>
+      <ol><li>Open one of the client’s sites on the <b>Sites</b> board.</li><li>Check the address, site code, access notes and 🔗Site Visits.</li></ol>
+      <p class="expect"><strong>You should see</strong>The site details are correct and the visit history lists past visits with their report numbers.</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>Set up a test client</h4><span class="role">Sales</span></header>
+      <ol><li>On <b>Accounts</b>, add <i>TEST – [your name] Ltd</i> and set yourself as Account Manager.</li>
+      <li>On <b>Contacts</b>, open the contact from A4 (or add one), and link it to the test account in <b>🔗Account</b>.</li>
+      <li>On <b>Sites</b>, add two sites, <i>TEST – [your name] – Site A</i> and <i>Site B</i>, with an address, and link both to the test account in <b>🔗Account</b>.</li>
+      <li>On Site A, choose a day in <b>Avoid Days</b> and add an <b>Allocation Note</b> (e.g. “Access via loading bay only”).</li></ol>
+      <p class="expect"><strong>You should see</strong>The account shows the linked contact; each site shows the account. You will see Site A’s allocation note again in Section H.</p></article>
+
+    <article class="test" data-id="B4"><header><span class="tid">B4</span><h4>Link the test client to your opportunity</h4><span class="role">Sales</span></header>
+      <ol><li>Open the opportunity created in A5. Set <b>🔗Account</b> to your test account and <b>🔗Contacts</b> to your test contact.</li></ol>
+      <p class="expect"><strong>You should see</strong>The account and contact appear on the opportunity, and the opportunity appears on the account.</p></article>
+  </div>
+</section>
+
+<!-- ============ C. OPPORTUNITIES ============ -->
+<section id="opps" data-section="opps">
+  <div class="sechead"><h2>C. Opportunities</h2><span class="kind board">Board</span><span class="who">Sales, account managers, finance</span></div>
+  <p>Every deal and every contract lives on the Opportunities board. A new piece of work starts here as a deal; once it is Won, the same item becomes the contract record, holding the order details, invoicing details and renewal dates.</p>
+  <div class="stages"><span>New</span><i>→</i><span>Discovery</span><i>→</i><span>Proposal</span><i>→</i><span>Negotiation</span><i>→</i><span>Won</span><i>or</i><span>Lost</span></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Column group</th><th>Main columns</th></tr></thead>
+    <tbody>
+      <tr><td>The deal</td><td>⚠️Deal Stage, Owner, 🔗Account, 🔗Contacts, Deal Value, Close Probability %, Expected Close Date, ⚠️Work Type</td></tr>
+      <tr><td>The order</td><td>Confirmation Type, Customer Order Ref, PO Expiry, 🟠PO Expiry Date, Order Date, Process Order Status</td></tr>
+      <tr><td>Invoicing</td><td>Invoice Address, Invoicing Email, Invoice Frequency, Invoice Calculation Method</td></tr>
+      <tr><td>The contract</td><td>Project Timeframe, Contract Period (Years), Anniversary Date, 🟠Renewal Date, 🔗Related Quotes, 🔗Related Visit</td></tr>
+      <tr><td>Renewals</td><td>🟠Opportunity Type, 🟠Renewal Stage, 🔗Parent Opportunity, 🟠Price Change %, 🟠QC Feedback</td></tr>
+    </tbody>
+  </table></div>
+  <p>Automations on this board: when Deal Stage changes to <b>Won</b>, the deal moves to the won group and Process Order Status is set to <b>Awaiting Processing</b>, which puts it in the Quotes &amp; Orders team’s queue. The owner is reminded 6 months before the 🟠Renewal Date and 30 days before the 🟠PO Expiry Date.</p>
+
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>Complete your test opportunity</h4><span class="role">Sales</span></header>
+      <ol><li>Open the opportunity from A5. Rename it <i>TEST – [your name] – Water contract</i>.</li>
+      <li>Fill in Owner, Deal Value, Close Probability %, Expected Close Date and Work Type. Set Deal Stage to <b>Discovery</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Everything saves. The deal sits in the active deals group.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>Fill in invoicing details</h4><span class="role">Sales / finance</span></header>
+      <ol><li>On the same opportunity, fill in Invoice Address, Invoicing Email (use your own), Invoice Frequency and Invoice Calculation Method.</li></ol>
+      <p class="expect"><strong>You should see</strong>All four save. The Order Processor needs these before it will process an order (Section F).</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>Find your work in the board views</h4><span class="role">Sales</span></header>
+      <ol><li>Use the board search and the <b>Person</b> filter to show only your opportunities.</li><li>Group or filter by Deal Stage.</li></ol>
+      <p class="expect"><strong>You should see</strong>Your test opportunity and your real deals, and nobody else’s once filtered.</p></article>
+  </div>
+  <p>Renewal and PO expiry reminders are tested in Section K, once your test deal is Won.</p>
+</section>
+
+<!-- ============ D. QUOTES ============ -->
+<section id="quotes" data-section="quotes">
+  <div class="sechead"><h2>D. Quote Builder and the Quotes &amp; Invoices board</h2><span class="kind app">App</span><span class="kind board">Board</span><span class="who">Sales, account managers</span></div>
+  <p>A quote is made of <b>lines</b>. Each line is one work type at one site, for example “Legionella Risk Assessment at Site A, quarterly”. Every line is stored as a row on the <b>Quotes &amp; Invoices</b> board, linked to its opportunity and site.</p>
+  <p>Quotes are always built in the <b>Quote Builder</b> app, which is why the Quotes &amp; Invoices board has no “+ Add item” button. The app works out the number of visits and the totals, keeps pricing consistent and creates the proposal document.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Line detail</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Frequency</td><td><b>Repeat</b> (recurring visits), <b>One-off</b> or <b>Contract</b></td></tr>
+      <tr><td>Visit Frequency</td><td>For repeat lines: Quarterly, 4-Monthly, 6-Monthly, Yearly or 2-Yearly</td></tr>
+      <tr><td>Number of Visits</td><td>The total number of visits over the whole contract</td></tr>
+      <tr><td>Actual Selling Price</td><td>Always the price <b>per visit</b>. Annual and contract totals are calculated from it.</td></tr>
+      <tr><td>First Visit — Week Number / Calendar Year / Contract Year</td><td>When the first visit is due. The order team uses this to schedule every visit.</td></tr>
+      <tr><td>Planned Days per Visit</td><td>How many days on site each visit takes</td></tr>
+      <tr><td>🟢Planned Samples (per visit)</td><td>How many of each lab test are planned on each visit. Feeds the Sample Planner.</td></tr>
+      <tr><td>Status</td><td>Working on it → Sent to client → Approved or Declined</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>Start a quote from your opportunity</h4><span class="role">Sales</span></header>
+      <ol><li>Open the <b>Quote Builder</b> app from the left-hand menu.</li><li>Find your test opportunity and click <b>Create quote</b>. If the app lists missing fields, fill them in on the opportunity and try again.</li></ol>
+      <p class="expect"><strong>You should see</strong>The quote wizard opens with your test account, contact and sites available to pick.</p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>Add a repeat line with samples</h4><span class="role">Sales</span></header>
+      <ol><li>Choose <i>Site A</i> and a sampling work type such as Water Quality Assessment or Legionella Risk Assessment.</li>
+      <li>Set Frequency to <b>Repeat</b>, Visit Frequency to <b>Quarterly</b>, a contract period of 1 year, a first visit week number about 6 weeks from now, and 1 day per visit.</li>
+      <li>Enter planned samples for at least two tests, for example W1-3 (S) TVC: 4 and W8-2 (No PS): 2 on each visit.</li>
+      <li>Click <b>Next</b> to move through the steps.</li></ol>
+      <p class="expect"><strong>You should see</strong>The app calculates 4 visits. The price you enter is per visit, and the annual total equals the price × 4.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Cost the line</h4><span class="role">Sales</span></header>
+      <ol><li>In <b>Costing</b>, enter consultant and support hours, the hourly rates and the lab sample cost.</li></ol>
+      <p class="expect"><strong>You should see</strong>The prime cost and margin (£ and %) update as you type.</p></article>
+
+    <article class="test" data-id="D4"><header><span class="tid">D4</span><h4>Add a one-off line</h4><span class="role">Sales</span></header>
+      <ol><li>Add a second line for <i>Site B</i>, Frequency <b>One-off</b>, with a different work type.</li><li>Try to continue without a first visit week number, then add one.</li></ol>
+      <p class="expect"><strong>You should see</strong>The app asks for the week number before it lets you continue.</p></article>
+
+    <article class="test" data-id="D5"><header><span class="tid">D5</span><h4>Create the proposal document</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Generate Quote Documents</b>.</li><li>Open the document and read it through.</li></ol>
+      <p class="expect"><strong>You should see</strong>A proposal with the cover letter, both sites, the work types, visit frequency and correct prices.</p></article>
+
+    <article class="test" data-id="D6"><header><span class="tid">D6</span><h4>Send the proposal to yourself</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Send email</b> and send it to your own email address (your test contact).</li><li>Open the <b>Quotes &amp; Invoices</b> board and find your two lines.</li></ol>
+      <p class="expect"><strong>You should see</strong>The email arrives with the proposal and an approval link. On the board, both lines show Status <b>Sent to client</b>, the per-visit price, week number, days per visit and (on the repeat line) the planned samples. The opportunity’s 🔗Related Quotes lists both lines.</p></article>
+
+    <article class="test" data-id="D7"><header><span class="tid">D7</span><h4>Change a line after sending</h4><span class="role">Sales</span></header>
+      <ol><li>In the Quote Builder, open the quote and use <b>Revise proposal</b> (or <b>Create new version</b>) to change the days per visit on the repeat line to 2.</li></ol>
+      <p class="expect"><strong>You should see</strong>A new version is created; the old lines are marked Superseded and the new line shows 2 days per visit. A fresh approval link replaces the old one.</p></article>
+
+    <article class="test" data-id="D8"><header><span class="tid">D8</span><h4>Quotes dashboard</h4><span class="role">Sales managers</span></header>
+      <ol><li>Open the Quote Builder’s <b>Quotes dashboard</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Lines and values by status, including your test quote, and the latest activity.</p></article>
+  </div>
+</section>
+
+<!-- ============ E. PORTAL ============ -->
+<section id="portal" data-section="portal">
+  <div class="sechead"><h2>E. Client approval</h2><span class="kind app">Portal</span><span class="who">What the client sees</span></div>
+  <p>Clients approve quotes through a secure link in the proposal email. They do not need a monday.com login. When they approve, the system records their order details on the opportunity and marks the deal as <b>Won</b>. If a client approves by post or phone instead, use <b>Record approval</b> in the Quote Builder.</p>
+  <div class="callout">Open the link in a <b>private or incognito</b> browser window, so you see exactly what a client sees.</div>
+
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>Open the approval link as the client</h4><span class="role">Sales</span></header>
+      <ol><li>Copy the approval link from the latest proposal email (after D7) into a private window.</li></ol>
+      <p class="expect"><strong>You should see</strong>The quote with Assurity’s details, both lines, prices, totals and the proposal document. No login is requested.</p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Approve the quote</h4><span class="role">Sales</span></header>
+      <ol><li>Choose the confirmation type <b>Purchase Order Document</b>, enter a PO number (e.g. TEST-PO-001) and a PO expiry date, and fill in any invoice details the page asks for.</li>
+      <li>Approve.</li><li>Back in monday.com, open your test opportunity and the two quote lines.</li></ol>
+      <p class="expect"><strong>You should see</strong>A thank-you message. Both lines show <b>Approved</b>. The opportunity shows Deal Stage <b>Won</b>, the order date, confirmation type, customer order reference and PO expiry, and Process Order Status <b>Awaiting Processing</b>. The owner is notified.</p></article>
+
+    <article class="test" data-id="E3"><header><span class="tid">E3</span><h4>The link can only be used once</h4><span class="role">Sales</span></header>
+      <ol><li>Open the same approval link again.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message that this quote has already been responded to. Nothing can be changed.</p></article>
+
+    <article class="test" data-id="E4"><header><span class="tid">E4</span><h4>Decline a quote</h4><span class="role">Sales</span></header>
+      <ol><li>Create a second small test quote on a new test opportunity (repeat D1, D2 and D6 quickly).</li><li>Open its link in a private window, decline it and give a reason.</li></ol>
+      <p class="expect"><strong>You should see</strong>The lines show <b>Declined</b>, the reason appears as an update on the lines, the owner is notified, and the deal is not marked Won.</p></article>
+  </div>
+</section>
+
+<!-- ============ F. ORDERS ============ -->
+<section id="orders" data-section="orders">
+  <div class="sechead"><h2>F. Order Processor</h2><span class="kind app">App</span><span class="who">Quotes &amp; Orders team</span></div>
+  <p>When a deal is Won, it appears in the Order Processor’s <b>Orders to process</b> list. The team checks that the order is complete, then submits it. The app creates every site visit for the contract and the sample planning rows, sets the order and report numbers, and tells finance.</p>
+  <h3>What the app checks before it lets you submit</h3>
+  <ul>
+    <li>The deal is Won and has a Confirmation Type; a purchase order also needs its reference.</li>
+    <li>Invoice Address, Invoicing Email and Invoice Frequency are filled in.</li>
+    <li>Every line has its frequency and first visit week number.</li>
+  </ul>
+  <p>Only people in the processing team (set in the app’s <b>Settings</b>) can submit or reject orders.</p>
+
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>Access is limited to the team</h4><span class="role">Someone outside the team</span></header>
+      <ol><li>Ask a colleague who is not in the processing team to open the <b>Order Processor</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>They can view orders but cannot submit or reject them, and they cannot open Settings.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>Find and review your order</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>Open the <b>Order Processor</b>. Find your test opportunity in <b>Orders to process</b>.</li>
+      <li>Open it and look at <b>Order details</b>, <b>Lines</b> and <b>Checks</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The order details from E2, your approved lines (not the superseded or declined ones), and a list of checks, each passed or showing what is missing.</p></article>
+
+    <article class="test" data-id="F3"><header><span class="tid">F3</span><h4>Fix a failed check</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>If every check passes, clear Invoice Frequency on the opportunity to create a failure, then reload the order.</li>
+      <li>Fill the missing detail back in and reload.</li></ol>
+      <p class="expect"><strong>You should see</strong>Submit is blocked while a check fails, with a clear message about what to fix. It becomes available once fixed.</p></article>
+
+    <article class="test" data-id="F4"><header><span class="tid">F4</span><h4>Submit the order</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>Click <b>Submit for processing</b> and confirm.</li></ol>
+      <p class="expect"><strong>You should see</strong>Process Order Status changes to <b>Processed</b>, order and report numbers are assigned, and the owner and finance are notified. The order moves to <b>History</b>.</p></article>
+
+    <article class="test" data-id="F5"><header><span class="tid">F5</span><h4>Check the visits that were created</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>Open the <b>Site Visit Workflow</b> board and search for your report number.</li></ol>
+      <p class="expect"><strong>You should see</strong>4 visits for the quarterly line (named report number /1 to /4) and 1 for the one-off line. Each is linked to the opportunity, site and quote, shows the per-visit value, proposed week and year and planned days, and has Visit Stage <b>Ready for Allocation</b>.</p></article>
+
+    <article class="test" data-id="F6"><header><span class="tid">F6</span><h4>Check the sample rows</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>Open the <b>Samples by Day</b> board.</li></ol>
+      <p class="expect"><strong>You should see</strong>A Day 1 row for each quarterly visit, linked to its visit, with the planned sample numbers from D2 and Sample Status <b>Planned</b>.</p></article>
+
+    <article class="test" data-id="F7"><header><span class="tid">F7</span><h4>Reject an order</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>Win a second test deal (approve another small test quote), open it in the Order Processor and click <b>Reject order</b> with a note.</li></ol>
+      <p class="expect"><strong>You should see</strong>Process Order Status <b>Rejected</b>, your note saved in Process Order Notes, and the owner and CS manager notified. The order stays in the list so it can be fixed and submitted later.</p></article>
+  </div>
+</section>
+
+<!-- ============ G. VISITS ============ -->
+<section id="visits" data-section="visits">
+  <div class="sechead"><h2>G. Site Visit Workflow</h2><span class="kind board">Board</span><span class="who">Planners, consultants, report team, CS</span></div>
+  <p>Every visit lives on this board from the moment the order is processed until the report is published. It holds the planning, the logistics, the report checks and the delivery details.</p>
+  <h3>The stages of a visit</h3>
+  <div class="stages"><span>Ready for Allocation</span><i>→</i><span>Allocated</span><i>→</i><span>Confirmed with Customer</span><i>→</i><span>Visit Carried Out</span><i>→</i><span>Report Written</span><i>→</i><span>Proofreading</span><i>→</i><span>Quality Check</span><i>→</i><span>Published</span></div>
+  <p>Other stages: <b>Suspect</b> (may not go ahead), <b>Ghost Visit</b> and <b>To Kill</b> (to be cancelled).</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Column group</th><th>Main columns</th></tr></thead>
+    <tbody>
+      <tr><td>Planning</td><td>Visit Number, Proposed Week Number, Planned Start Date, Planned Days at Site, 🟦Assigned Consultant, 🟣Last Allocated</td></tr>
+      <tr><td>Links</td><td>🔗Opportunity, 🔗Site, 🔗Quote, Visit Value (per visit)</td></tr>
+      <tr><td>Logistics</td><td>Hotel to Be Booked?, Permit Required?, Escort Required, Car Parking Request, Additional Details</td></tr>
+      <tr><td>Report</td><td>Report Deadline Date, SLA Flag, proofreading and quality check columns, Report Signed Off Date</td></tr>
+      <tr><td>Delivery and invoicing</td><td>Delivery Channel, Delivery Date, Invoiced?, Planned Invoice Date</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">Visit and report dates are entered by hand until SVR is connected. Only move <b>TEST</b> visits through the stages.</div>
+
+  <div class="tests">
+    <article class="test" data-id="G1"><header><span class="tid">G1</span><h4>Read a visit</h4><span class="role">Everyone</span></header>
+      <ol><li>Open one of your test visits from F5.</li><li>Click through 🔗Site, 🔗Opportunity and 🔗Quote.</li></ol>
+      <p class="expect"><strong>You should see</strong>Each link opens the right item, and the visit shows the correct site and value.</p></article>
+
+    <article class="test" data-id="G2"><header><span class="tid">G2</span><h4>Add visit logistics</h4><span class="role">Planner</span></header>
+      <ol><li>On test visit /1, tick <b>Hotel to Be Booked?</b> and <b>Permit Required for This Visit?</b>, and add a line in Additional Details.</li></ol>
+      <p class="expect"><strong>You should see</strong>The ticks and the note save.</p></article>
+
+    <article class="test" data-id="G3"><header><span class="tid">G3</span><h4>Take a visit through to a published report</h4><span class="role">Consultant / report team</span></header>
+      <ol><li>After you have allocated visit /1 in Section H, move its Visit Stage step by step: Confirmed with Customer, Visit Carried Out, Report Written, Proofreading, Quality Check, Published.</li>
+      <li>On the way, fill in the visit start and end dates, Proofread By and Proofread Date, and a Quality Check Risk Rating.</li></ol>
+      <p class="expect"><strong>You should see</strong>Each stage and date saves. When the visit is Published, the SLA Flag changes to <b>Met</b> (see Section J).</p></article>
+  </div>
+</section>
+
+<!-- ============ H. WORKLOAD ============ -->
+<section id="workload" data-section="workload">
+  <div class="sechead"><h2>H. Workload Planner</h2><span class="kind app">App</span><span class="who">Planners, allocators, consultants</span></div>
+  <p>The Workload Planner lists every visit waiting for a consultant and helps the allocator choose the right person and days. It ranks consultants by skills and competencies, distance, current workload, targets and availability, and warns when someone would be overloaded. It never blocks a decision: the allocator always has the final say.</p>
+  <h3>The screens</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Screen</th><th>Use it to</th></tr></thead>
+    <tbody>
+      <tr><td><b>Dashboard</b></td><td>See what needs attention this week</td></tr>
+      <tr><td><b>Unassigned jobs</b></td><td>Work through visits that are Ready for Allocation</td></tr>
+      <tr><td><b>Map</b></td><td>See visits and consultants by location</td></tr>
+      <tr><td><b>Consultant workload</b></td><td>See each consultant’s booked days against their capacity</td></tr>
+      <tr><td><b>Availability</b> / <b>My availability</b></td><td>Record and view leave, training and other time away</td></tr>
+      <tr><td><b>Allocation history</b></td><td>See who allocated what, and why things were re-allocated</td></tr>
+      <tr><td><b>Admin</b></td><td>Consultants, Competencies, Targets, Leave &amp; training, Work types and Settings (allocators, scoring weights, closures)</td></tr>
+    </tbody>
+  </table></div>
+  <p>When a visit is allocated, the app sets the consultant, the planned start date and the stage <b>Allocated</b>, works out the <b>Report Deadline Date</b> from the work type’s SLA, notifies the consultant and moves the visit’s sample days to match.</p>
+
+  <div class="tests">
+    <article class="test" data-id="H1"><header><span class="tid">H1</span><h4>Only allocators can allocate</h4><span class="role">Admin + a consultant</span></header>
+      <ol><li>An admin opens <b>Admin → Settings</b> and checks who is listed under <b>Allocators</b>.</li><li>A consultant who is not an allocator opens <b>Unassigned jobs</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The consultant can view jobs but cannot allocate them. People listed as allocators can.</p></article>
+
+    <article class="test" data-id="H2"><header><span class="tid">H2</span><h4>Find your test visits</h4><span class="role">Allocator</span></header>
+      <ol><li>Open <b>Unassigned jobs</b> and filter or search for your test site.</li></ol>
+      <p class="expect"><strong>You should see</strong>Your test visits, each with its proposed week, site, work type and days.</p></article>
+
+    <article class="test" data-id="H3"><header><span class="tid">H3</span><h4>Find the right consultant</h4><span class="role">Allocator</span></header>
+      <ol><li>Open test visit /1 and open the consultant finder.</li><li>Try the different sort options, such as Earliest slot, Distance, Workload and Competency.</li></ol>
+      <p class="expect"><strong>You should see</strong>A ranked list of consultants with the reasons for each ranking. Site A’s allocation note and avoid days from B3 are shown.</p></article>
+
+    <article class="test" data-id="H4"><header><span class="tid">H4</span><h4>Allocate the visit</h4><span class="role">Allocator</span></header>
+      <ol><li>Choose a consultant (yourself or a willing colleague) and the visit day, and allocate.</li><li>Open the visit on the Site Visit Workflow board.</li></ol>
+      <p class="expect"><strong>You should see</strong>Assigned Consultant, Planned Start Date and Last Allocated are filled in, the stage is <b>Allocated</b>, Report Deadline Date is set, SLA Flag shows <b>On track</b>, and the consultant gets a notification and an update on the visit.</p></article>
+
+    <article class="test" data-id="H5"><header><span class="tid">H5</span><h4>Allocate a lead and a support consultant</h4><span class="role">Allocator</span></header>
+      <ol><li>Allocate test visit /2 with a lead consultant and a support consultant.</li></ol>
+      <p class="expect"><strong>You should see</strong>Both people appear in Assigned Consultant and both are notified.</p></article>
+
+    <article class="test" data-id="H6"><header><span class="tid">H6</span><h4>Over-capacity warning</h4><span class="role">Allocator</span></header>
+      <ol><li>Allocate visit /3 to a consultant in a week that is already full (check <b>Consultant workload</b>).</li></ol>
+      <p class="expect"><strong>You should see</strong>A warning that the consultant would be over capacity. You can still go ahead.</p></article>
+
+    <article class="test" data-id="H7"><header><span class="tid">H7</span><h4>Leave and closures</h4><span class="role">Admin / consultant</span></header>
+      <ol><li>In <b>My availability</b>, add a day of leave next month.</li><li>Look at that week in <b>Consultant workload</b> and the consultant finder.</li></ol>
+      <p class="expect"><strong>You should see</strong>The day shows as unavailable and the week’s capacity is lower.</p></article>
+
+    <article class="test" data-id="H8"><header><span class="tid">H8</span><h4>Re-allocate a visit</h4><span class="role">Allocator</span></header>
+      <ol><li>Re-allocate visit /3 to a different consultant and give a reason.</li></ol>
+      <p class="expect"><strong>You should see</strong>The new consultant is shown, 🟣Times Re-allocated goes up by 1, both people are notified, and the reason appears in <b>Allocation history</b>.</p></article>
+
+    <article class="test" data-id="H9"><header><span class="tid">H9</span><h4>Return a visit to the queue</h4><span class="role">Allocator</span></header>
+      <ol><li>On visit /4, use <b>Return to queue</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The visit is back in Unassigned jobs with the stage <b>Ready for Allocation</b>, and the consultant and dates are cleared.</p></article>
+  </div>
+</section>
+
+<!-- ============ I. SAMPLES ============ -->
+<section id="samples" data-section="samples">
+  <div class="sechead"><h2>I. Sample Planner</h2><span class="kind app">App</span><span class="kind board">Samples by Day · Lab Capacity</span><span class="who">Consultants, lab</span></div>
+  <p>The lab can only process a set number of samples each day. The Sample Planner shows consultants how many samples they plan to take on each visit day and how much lab capacity is left, so busy days are spotted early. Going over capacity is never blocked: the consultant gives a reason and the lab approves it or asks for the date to move.</p>
+  <p>Each visit day is one row on the <b>Samples by Day</b> board. The sample date follows the visit’s planned dates automatically, so you change dates in the Workload Planner, not here. Daily limits live on the <b>Lab Capacity</b> board and are managed in the app’s Admin screen.</p>
+  <h3>Lab categories and current daily limits</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Category</th><th>Tests that count towards it</th><th>Max per day</th><th>Amber warning when this many are left</th></tr></thead>
+    <tbody>
+      <tr><td>Air</td><td>A5-1 (SA), A5-2 (CA), CR6-1 (SA), CR6-2 (CA)</td><td class="num">130</td><td class="num">10</td></tr>
+      <tr><td>CT</td><td>W1-3, W2-3, W3-3 (S) TVC</td><td class="num">15</td><td class="num">5</td></tr>
+      <tr><td>Non-Pot</td><td>W6-1 TVC (HW), W6-1 TVC (CW)</td><td class="num">150</td><td class="num">30</td></tr>
+      <tr><td>Pot</td><td>W8-2 (No PS)</td><td class="num">80</td><td class="num">20</td></tr>
+      <tr><td>Pot-PS</td><td>W8-1 (+PS)</td><td class="num">35</td><td class="num">10</td></tr>
+      <tr><td>Leg</td><td>W1-3, W2-3, W3-3 (S) LEG, W7 (FF), W7 (1L)</td><td class="num">45</td><td class="num">10</td></tr>
+    </tbody>
+  </table></div>
+  <p>Screens: <b>My samples</b> (your visits), <b>Team samples</b> (by consultant, date, site or work type), <b>Lab view</b> (day by day capacity and requests), <b>Reports</b> and <b>Admin</b> (lab users, sampling work types, capacity rules).</p>
+
+  <div class="tests">
+    <article class="test" data-id="I1"><header><span class="tid">I1</span><h4>See your planned samples</h4><span class="role">Consultant</span></header>
+      <ol><li>As the consultant allocated to visit /1, open the <b>Sample Planner</b> → <b>My samples</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Visit /1 with Day 1 and the planned sample numbers from the quote. The sample date matches the visit’s planned start date and cannot be edited here.</p></article>
+
+    <article class="test" data-id="I2"><header><span class="tid">I2</span><h4>Split samples over two days</h4><span class="role">Consultant + allocator</span></header>
+      <ol><li>Ask the allocator to change visit /1 to 2 days at site (re-allocate in the Workload Planner).</li><li>Reload My samples and move some samples from Day 1 to Day 2.</li></ol>
+      <p class="expect"><strong>You should see</strong>Two day rows with the next working day as Day 2. The total for each test across both days matches the original plan.</p></article>
+
+    <article class="test" data-id="I3"><header><span class="tid">I3</span><h4>Tank samples, no-sample days and notes</h4><span class="role">Consultant</span></header>
+      <ol><li>Enter a number of Tank Samples on Day 1 and add a note.</li><li>Tick <b>No Samples</b> on Day 2.</li></ol>
+      <p class="expect"><strong>You should see</strong>Everything saves and shows on the Samples by Day board.</p></article>
+
+    <article class="test" data-id="I4"><header><span class="tid">I4</span><h4>Read the capacity colours</h4><span class="role">Consultant</span></header>
+      <ol><li>Look at <b>Lab capacity left on your sample dates</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Each category for your dates shows how many samples are left: green when there is room, amber near the limit, red when over.</p></article>
+
+    <article class="test" data-id="I5"><header><span class="tid">I5</span><h4>Plan over capacity and give a reason</h4><span class="role">Consultant</span></header>
+      <ol><li>On a test visit day, raise CT samples (W1-3 (S) TVC) above 15.</li><li>When the <b>Over lab capacity</b> message appears, type a reason and send the request.</li></ol>
+      <p class="expect"><strong>You should see</strong>The samples save, Capacity Request shows <b>Requested</b>, and lab users are notified.</p></article>
+
+    <article class="test" data-id="I6"><header><span class="tid">I6</span><h4>Lab approves a request</h4><span class="role">Lab user</span></header>
+      <ol><li>Open <b>Lab view</b> → <b>Capacity requests</b>. Find the request from I5.</li><li>Approve it with a short response.</li></ol>
+      <p class="expect"><strong>You should see</strong>Capacity Request changes to <b>Approved</b>, the response is saved in Lab Response, and the consultant is notified.</p></article>
+
+    <article class="test" data-id="I7"><header><span class="tid">I7</span><h4>Lab asks for a date change</h4><span class="role">Lab user + consultant</span></header>
+      <ol><li>Raise a second over-capacity request on another day. As the lab, answer <b>Move Date</b> with a suggested date.</li><li>As the consultant, ask the allocator to move the visit in the Workload Planner.</li></ol>
+      <p class="expect"><strong>You should see</strong>The consultant is notified to move the date. Once the visit moves, the sample day moves with it.</p></article>
+
+    <article class="test" data-id="I8"><header><span class="tid">I8</span><h4>Closures and announcements</h4><span class="role">Lab admin</span></header>
+      <ol><li>In <b>Admin</b>, add a Date override for one test date with a lower limit, and an Announcement such as “Lab closed for stock take”.</li><li>As a consultant, look at that date.</li><li>Untick <b>Active</b> on both rules.</li></ol>
+      <p class="expect"><strong>You should see</strong>The lower limit and the message show for that date. Once switched off, the normal limits return.</p></article>
+
+    <article class="test" data-id="I9"><header><span class="tid">I9</span><h4>Team and lab overview</h4><span class="role">Team leader / lab</span></header>
+      <ol><li>Open <b>Team samples</b> and group by consultant, then by sample date.</li><li>Open <b>Lab view</b> → <b>Day by day</b> for the next 6 weeks.</li></ol>
+      <p class="expect"><strong>You should see</strong>Your test visits in the right groups, and daily totals per category that include your test samples.</p></article>
+  </div>
+</section>
+
+<!-- ============ J. SLA ============ -->
+<section id="sla" data-section="sla">
+  <div class="sechead"><h2>J. Report deadlines and SLA</h2><span class="kind board">Site Visit Workflow · Report SLA Rules</span><span class="who">Consultants, report team, CS</span></div>
+  <p>Each work type has a number of days within which the report must be published. These are listed on the <b>Report SLA Rules</b> board (currently 30 days for the main work types, to be confirmed). When a visit is allocated, the Workload Planner sets its <b>Report Deadline Date</b>, and the <b>SLA Flag</b> then tracks it.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>When</th><th>SLA Flag</th><th>Who hears about it</th></tr></thead>
+    <tbody>
+      <tr><td>Deadline set or changed</td><td>On track</td><td>No notification</td></tr>
+      <tr><td>5 days before the deadline, report not published</td><td>Due Soon</td><td>Consultant</td></tr>
+      <tr><td>On the deadline day, not published</td><td>Due Soon</td><td>Consultant (“due today”)</td></tr>
+      <tr><td>The day after the deadline, not published</td><td>Overdue</td><td>Consultant</td></tr>
+      <tr><td>Published, never overdue</td><td>Met</td><td>No notification</td></tr>
+      <tr><td>Published after it went overdue</td><td>Late</td><td>No notification</td></tr>
+    </tbody>
+  </table></div>
+  <p>For these tests, use your allocated test visits and change the <b>Report Deadline Date</b> by hand.</p>
+
+  <div class="tests">
+    <article class="test" data-id="J1"><header><span class="tid">J1</span><h4>Due in 5 days</h4><span class="tag">Overnight</span><span class="role">Consultant</span></header>
+      <ol><li>Set a test visit’s Report Deadline Date to 6 days from today. Check tomorrow.</li></ol>
+      <p class="expect"><strong>You should see</strong>SLA Flag <b>Due Soon</b> and a notification that the report is due in 5 days.</p></article>
+    <article class="test" data-id="J2"><header><span class="tid">J2</span><h4>Due today</h4><span class="tag">Overnight</span><span class="role">Consultant</span></header>
+      <ol><li>Set another test visit’s deadline to tomorrow. Check tomorrow.</li></ol>
+      <p class="expect"><strong>You should see</strong>SLA Flag <b>Due Soon</b> and a “due today” notification.</p></article>
+    <article class="test" data-id="J3"><header><span class="tid">J3</span><h4>Overdue</h4><span class="tag">Overnight</span><span class="role">Consultant</span></header>
+      <ol><li>Set a third test visit’s deadline to today. Check tomorrow.</li></ol>
+      <p class="expect"><strong>You should see</strong>SLA Flag <b>Overdue</b> and a “report overdue” notification.</p></article>
+    <article class="test" data-id="J4"><header><span class="tid">J4</span><h4>Published on time</h4><span class="role">Report team</span></header>
+      <ol><li>Set the J1 visit’s Visit Stage to <b>Published</b> before its deadline.</li></ol>
+      <p class="expect"><strong>You should see</strong>SLA Flag <b>Met</b>.</p></article>
+    <article class="test" data-id="J5"><header><span class="tid">J5</span><h4>Published late</h4><span class="role">Report team</span></header>
+      <ol><li>Once J3 shows Overdue, set that visit to <b>Published</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>SLA Flag <b>Late</b>.</p></article>
+    <article class="test" data-id="J6"><header><span class="tid">J6</span><h4>Deadline moved</h4><span class="role">Report team</span></header>
+      <ol><li>On the J2 visit, move the deadline out by two weeks.</li></ol>
+      <p class="expect"><strong>You should see</strong>SLA Flag goes back to <b>On track</b>.</p></article>
+  </div>
+</section>
+
+<!-- ============ K. RENEWALS ============ -->
+<section id="renewals" data-section="renewals">
+  <div class="sechead"><h2>K. Contract Renewal Hub</h2><span class="kind app">App</span><span class="who">Account managers, CS managers, QC reviewers</span></div>
+  <p>Six months before a contract’s 🟠Renewal Date, the owner is reminded to start the renewal. In the Renewal Hub, <b>Copy Forward</b> creates the renewal: a new opportunity linked to the old one, with every active line copied into the next contract period. You then review prices, check the planned work, pass it through quality check, send it to the client and, once accepted, make it live. A live renewal goes back to the Order Processor, so its visits are created like any new order.</p>
+  <h3>Renewal stages</h3>
+  <div class="stages"><span>Not Started</span><i>→</i><span>In Progress</span><i>→</i><span>Pending Quality Check</span><i>→</i><span>Send Documents to Customer</span><i>→</i><span>Waiting for Renewal</span><i>→</i><span>Live</span></div>
+  <p>A reviewer can send it back with <b>Returned to Consultant</b>. When the renewal goes live, the old contract is marked <b>Reported</b>.</p>
+
+  <div class="tests">
+    <article class="test" data-id="K1"><header><span class="tid">K1</span><h4>Renewal reminder</h4><span class="tag">Overnight</span><span class="role">Account manager</span></header>
+      <ol><li>On your Won test opportunity, set 🟠Renewal Date to 6 months from tomorrow. Check tomorrow.</li></ol>
+      <p class="expect"><strong>You should see</strong>A “Contract renewal due” notification asking you to start the renewal with Copy Forward.</p></article>
+
+    <article class="test" data-id="K2"><header><span class="tid">K2</span><h4>PO expiry reminder</h4><span class="tag">Overnight</span><span class="role">Account manager</span></header>
+      <ol><li>Set 🟠PO Expiry Date to 30 days from tomorrow. Check tomorrow.</li></ol>
+      <p class="expect"><strong>You should see</strong>A notification that the PO expires in 30 days, asking you to contact the account manager and finance.</p></article>
+
+    <article class="test" data-id="K3"><header><span class="tid">K3</span><h4>Find the contract</h4><span class="role">Account manager</span></header>
+      <ol><li>Open the <b>Contract Renewal Hub</b> and look at <b>Renewal urgency</b>, or use <b>Choose a contract</b> to find your test contract.</li></ol>
+      <p class="expect"><strong>You should see</strong>Your contract in the right urgency group for its renewal date, with its lines and current prices.</p></article>
+
+    <article class="test" data-id="K4"><header><span class="tid">K4</span><h4>Copy the contract forward</h4><span class="role">Account manager</span></header>
+      <ol><li>Click <b>Copy Forward</b> and confirm the new contract period.</li><li>Open the new renewal opportunity on the Opportunities board.</li></ol>
+      <p class="expect"><strong>You should see</strong>A new opportunity named “… — Renewal”, with 🟠Opportunity Type <b>Renewal</b>, 🔗Parent Opportunity linked to the original, and the same account, contacts and owner. Its lines have the same sites, work types, days per visit and planned samples, with the dates moved into the new period.</p></article>
+
+    <article class="test" data-id="K5"><header><span class="tid">K5</span><h4>A contract can only be copied once</h4><span class="role">Account manager</span></header>
+      <ol><li>Go back to the original contract and try Copy Forward again.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message that a renewal already exists. No second copy is made.</p></article>
+
+    <article class="test" data-id="K6"><header><span class="tid">K6</span><h4>Apply a price change</h4><span class="role">Account manager</span></header>
+      <ol><li>On the renewal, open <b>Price Change</b>, choose <b>Increase</b>, enter 5% and apply it to all lines.</li><li>Then click <b>Undo Last Change</b>, and apply it again.</li></ol>
+      <p class="expect"><strong>You should see</strong>Every line’s price goes up by 5%, with the old price kept in 🟠Previous Selling Price. Undo restores the old prices.</p></article>
+
+    <article class="test" data-id="K7"><header><span class="tid">K7</span><h4>Add a new line to the renewal</h4><span class="role">Account manager</span></header>
+      <ol><li>Use <b>Add Quote Line</b> to add a new work type at Site A, including its first visit week and days.</li></ol>
+      <p class="expect"><strong>You should see</strong>The new line appears with 🟠Renewal Line Status <b>New</b>.</p></article>
+
+    <article class="test" data-id="K8"><header><span class="tid">K8</span><h4>Quality check</h4><span class="role">Account manager + QC reviewer</span></header>
+      <ol><li>Click <b>Submit for quality check</b>.</li><li>As the reviewer, return it once with feedback, then resubmit and <b>Pass QC</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Renewal Stage moves to Pending Quality Check, then Returned to Consultant (with the feedback in 🟠QC Feedback), then on to Send Documents to Customer. Only reviewers can pass QC.</p></article>
+
+    <article class="test" data-id="K9"><header><span class="tid">K9</span><h4>Send the renewal to the client</h4><span class="role">Account manager</span></header>
+      <ol><li>Click <b>Send proposal to customer</b> (or <b>Mark proposal sent</b> if you sent it another way).</li></ol>
+      <p class="expect"><strong>You should see</strong>The proposal method, sender and date are recorded, and Renewal Stage moves to Waiting for Renewal.</p></article>
+
+    <article class="test" data-id="K10"><header><span class="tid">K10</span><h4>Make the renewal live</h4><span class="role">Account manager</span></header>
+      <ol><li>Record how the client accepted (e.g. Purchase Order Document with a PO number, and the PO expiry type), then click <b>Make Contract Live</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The renewal shows Deal Stage <b>Won</b>, Renewal Stage <b>Live</b> and Process Order Status <b>Awaiting Processing</b>. The original contract shows Renewal Stage <b>Reported</b>.</p></article>
+
+    <article class="test" data-id="K11"><header><span class="tid">K11</span><h4>Process the renewal</h4><span class="role">Quotes &amp; Orders</span></header>
+      <ol><li>In the <b>Order Processor</b>, find the renewal in Orders to process and submit it (repeat F2 to F6).</li><li>In the Sample Planner’s <b>Lab view</b>, check the renewal’s expected samples.</li></ol>
+      <p class="expect"><strong>You should see</strong>New visits for the new contract period and new sample day rows, with no duplicates of the previous year’s visits.</p></article>
+  </div>
+</section>
+
+<section id="help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>I can’t see “+ Add item” on the Quotes &amp; Invoices board.</dt>
+    <dd>That is by design. Quote lines are always created in the Quote Builder so prices and visit numbers stay consistent.</dd>
+    <dt>I can’t allocate in the Workload Planner.</dt>
+    <dd>Ask an admin to add you under Admin → Settings → Allocators.</dd>
+    <dt>I can’t submit an order in the Order Processor.</dt>
+    <dd>Check the <b>Checks</b> tab. It lists what is missing, usually an invoicing detail on the opportunity or a first visit week on a line. If every check passes, ask an admin to add you to the processing team in Settings.</dd>
+    <dt>A reminder or SLA flag didn’t change.</dt>
+    <dd>Date-based automations run once each morning. Check the next day, and make sure the item has an Owner or Assigned Consultant to notify.</dd>
+    <dt>Where are invoices raised?</dt>
+    <dd>Invoicing stays in Sage Line 50 for now. The order details in monday.com are what finance works from.</dd>
+    <dt>Why are some columns marked 🟦, 🟩 or 🟨?</dt>
+    <dd>They will be filled by SVR, Assurity Plus and the lab system once those are connected. Until then, fill them in by hand where you need them.</dd>
+    <dt>I changed something on a real client by mistake.</dt>
+    <dd>Open the item, click the activity log (clock icon) to see the previous value, and change it back. Tell us so we can check.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity monday.com UAT results',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
