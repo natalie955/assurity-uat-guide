@@ -113,8 +113,57 @@ dl.faq dd{margin:.2rem 0 0;max-width:68ch}
 }
 @media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
 </style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:14px;white-space:nowrap;color:var(--accent);font-size:.85rem;text-transform:uppercase}
+.tabs a{padding:8px 14px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .92rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
 </head>
 <body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity · monday.com</span><a href="training.html">How it all fits together</a><a href="./" aria-current="page">UAT test guide</a></div></nav>
 <div class="wrap">
 <nav class="toc" aria-label="Contents">
   <p class="label">Contents</p>
