@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Sample Planner UAT Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./">End-to-end UAT</a><a href="uat-quote-builder.html">Quote Builder</a><a href="uat-approval-portal.html">Approval Portal</a><a href="uat-order-processor.html">Order Processor</a><a href="uat-workload-planner.html">Workload Planner</a><a href="uat-sample-planner.html" aria-current="page">Sample Planner</a><a href="uat-renewal-hub.html">Renewal Hub</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#sp-start">Before you start</a></li>
+    <li><a href="#sp-settings">A. Roles and settings <span class="count" data-count="sp-settings"></span></a></li>
+    <li><a href="#sp-rules">B. Lab capacity rules <span class="count" data-count="sp-rules"></span></a></li>
+    <li><a href="#sp-sync">C. Sample day rows and keeping them in step <span class="count" data-count="sp-sync"></span></a></li>
+    <li><a href="#sp-mysamples">D. My samples <span class="count" data-count="sp-mysamples"></span></a></li>
+    <li><a href="#sp-team">E. Team samples <span class="count" data-count="sp-team"></span></a></li>
+    <li><a href="#sp-lab">F. Lab view <span class="count" data-count="sp-lab"></span></a></li>
+    <li><a href="#sp-reports">G. Reports <span class="count" data-count="sp-reports"></span></a></li>
+    <li><a href="#sp-help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · Sample Planner</p>
+  <h1>Sample Planner: in-depth test script</h1>
+  <p class="lead">Every part of the Sample Planner: roles and settings, lab capacity rules, how sample day rows are created and kept in step with visits, planning samples, going over capacity, the team view, Lab view, capacity requests and reports.</p>
+  <p class="byline">Prepared by Mutherboard · November 2026 · Version 1 · 30 tests · 3–4 hours · For: An admin or lab admin, a consultant, a team manager and a lab user (some tests need two people)</p>
+</header>
+
+<section id="sp-start">
+  <h2>Before you start</h2>
+  <p>The Sample Planner lets consultants plan how many lab samples they will take on each day of a site visit, and lets the lab see how full each day is for each sample category. It uses two boards: <b>Samples by Day</b> (one row per visit day, with the number of each lab test) and <b>Lab Capacity</b> (the daily limits and warning levels). Every screen uses the same capacity sums, so the consultant, the manager and the lab all see the same numbers.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>Access to the Sample Planner app in monday.com, and to the Samples by Day, Lab Capacity, Visits, Quotes &amp; Invoices and Opportunities boards so you can check what the app writes.</li>
+    <li>An admin set up as in test A1. Do section A first. Until someone is saved in <b>Admins</b>, only the owners of the Samples by Day board can open <b>Admin</b>.</li>
+    <li>Your name on the Consultant Skills &amp; Availability board with a <b>Team</b> filled in. Team samples uses this to work out who is in which team.</li>
+    <li>A colleague in the same team for tests marked <b>Two people</b>, and one person saved as a <b>Lab user</b> (test A1).</li>
+    <li>Access to the Quote Builder, Order Processor and Workload Planner (or someone who can run them for you), and edit rights on the Visits board.</li>
+  </ul>
+  <h3>Test data</h3>
+  <ul>
+    <li><b>Your test dates.</b> Pick a Thursday 8–11 weeks from today, in a week with no bank holiday. We call it your <b>test Thursday</b>. The next day is your <b>test Friday</b>, then <b>the Monday after</b>, then <b>test Tuesday</b> (the day after that Monday). Open <b>Lab view</b>, set <b>From</b> and <b>to</b> to your test Thursday and check the Leg row shows <b>Planned</b> 0. If it shows another number, add that number to every Leg limit used in tests B2 and D5 (for example, if Planned shows 3, use Max per day 13 instead of 10).</li>
+    <li>A TEST company and site, e.g. “TEST – Sam – Riverside Offices”, with your own email address as the contact.</li>
+    <li>A TEST opportunity, e.g. “TEST – Sam – Sample Planner”, with two quote lines at that site, built in the Quote Builder:
+      <ul>
+        <li><b>Line 1:</b> work type Water Quality Assessment, a frequency with at least 2 visits, 2 days per visit. In <b>Planned work (air / water)</b> enter <b>W1-3 (S) LEG</b>: Visit 1 = 6, Visit 2 = 4, and <b>W8-2 (No PS)</b>: Visit 1 = 2, Visit 2 = 2.</li>
+        <li><b>Line 2:</b> work type Legionella Risk Assessment, 1 day per visit, nothing in Planned work.</li>
+      </ul>
+      Send it to your own email and approve it in the portal. Do not process it yet – test C1 does that.</li>
+    <li>For test F4 only: a second TEST opportunity, e.g. “TEST – Sam – Renewal samples”, with <b>Opportunity Type</b> = Renewal. It must not be processed.</li>
+    <li>When the order is processed, write down the report number. The visits are named “report number/visit number”, e.g. 12345/1. In this script we call them <b>visit /1</b>, <b>visit /2</b> and <b>the line 2 visit</b>.</li>
+  </ul>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only, separately for each app’s script. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date check that runs each morning. Set things up as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="sp-settings" data-section="sp-settings">
+  <div class="sechead"><h2>A. Roles and settings</h2><span class="who">Admin (plus one colleague for A2)</span></div>
+  <p>The <b>Admin</b> page has two tabs, <b>Capacity rules</b> and <b>Settings</b>. The Settings lists decide who can do what. They are saved inside the app, not on a board. Everyone can use <b>My samples</b>, <b>Lab view</b> and <b>Reports</b>. The lists below give people extra pages and buttons.</p>
+  <div class="tablewrap"><table><thead><tr><th>Role</th><th>How you get it</th><th>Extra pages</th><th>What it lets you do</th></tr></thead><tbody>
+    <tr><td>Consultant</td><td>Anyone. Your visits are the ones where you are the Assigned Consultant</td><td>None</td><td>Plan samples on your own visits and send capacity requests</td></tr>
+    <tr><td>Team manager, deputy or allocator</td><td><b>Team managers, deputies and allocators</b>, with one team or <b>All teams</b></td><td><b>Team samples</b></td><td>See any team, and edit the visits of consultants in your team (any visit with All teams)</td></tr>
+    <tr><td>Lab user</td><td><b>Lab users (notified about capacity requests)</b></td><td>None</td><td>Gets a notification for each capacity request; <b>Approve</b> or <b>Ask to move</b> in Lab view</td></tr>
+    <tr><td>Lab admin</td><td><b>Lab admins</b></td><td><b>Admin</b></td><td>Change capacity rules and settings (but not the Admins list); answer capacity requests</td></tr>
+    <tr><td>Admin</td><td><b>Admins</b> (or a Samples by Day board owner while Admins is empty)</td><td><b>Team samples</b>, <b>Admin</b></td><td>Everything, including editing any visit's samples</td></tr>
+  </tbody></table></div>
+  <div class="callout warn">While the Admins list is empty, the owners of the Samples by Day board count as admins. As soon as anyone is saved in <b>Admins</b>, board owners lose admin rights unless they are in the list too. Always add yourself first.</div>
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>Fill in and save the Settings lists</h4><span class="tag">Admin</span><span class="role">Admin</span></header>
+      <ol>
+        <li>Open the Sample Planner and click <b>Admin</b> in the sidebar. Check the page title reads <b>Lab capacity &amp; settings</b> with the tabs <b>Capacity rules</b> and <b>Settings</b>.</li>
+        <li>If no admins have been set yet, check for the amber note: <b>No admins are set yet, so only the owners of the Samples by Day board can manage settings. Add at least one admin in Settings.</b></li>
+        <li>Click <b>Settings</b>. Under <b>Admins</b>, choose yourself from <b>Add a person…</b>. Your chip appears and you disappear from that list's drop-down.</li>
+        <li>Under <b>Lab users (notified about capacity requests)</b>, add the colleague who will act as lab user in test F5.</li>
+        <li>Under <b>Team managers, deputies and allocators</b>, check <b>Add</b> is greyed out. Choose yourself in <b>Choose a person…</b>, choose your own team (not All teams) in the team list, and click <b>Add</b>.</li>
+        <li>Check <b>Work types that take samples</b>. If nobody has changed it, it lists: Workplace Environmental Assessment, Water Quality Assessment, Indoor Air Quality Assessment, Adapted Workplace Environmental Assessment, Legionella Risk Assessment, Closed Water System Management Review.</li>
+        <li>Enter your own email address in <b>Lab capacity inbox email</b>. Note that <b>Friday distance warning (miles)</b> says <b>Coming in phase 2</b>.</li>
+        <li>Click <b>Save settings</b>, then reload the page and open <b>Settings</b> again.</li>
+        <li>Remove one lab user with the <b>×</b> on their chip, click <b>Save settings</b>, then add them back and save again.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The button shows <b>Saving…</b>, then the message <b>Settings saved.</b> After reloading, every list, the inbox email and the work types are exactly as you left them. Your manager chip reads “your name · your team”. The amber “No admins are set yet” note has gone. After a reload, <b>Team samples</b> appears in your sidebar. Removing and re-adding a person is kept after each save.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>What each role sees</h4><span class="tag">Two people</span><span class="role">Admin + colleague</span></header>
+      <ol>
+        <li>Make sure your colleague is in none of the Settings lists. Ask them to open the Sample Planner.</li>
+        <li>Your colleague checks the sidebar and the bottom of the sidebar, then opens <b>Lab view</b> and scrolls to <b>Capacity requests</b>.</li>
+        <li>In <b>Settings</b>, add your colleague to <b>Lab admins</b> and save. Your colleague reloads the app, clicks <b>Admin</b>, then <b>Settings</b>.</li>
+        <li>Your colleague clicks <b>Save settings</b>. You reload your own Settings tab and check the Admins list.</li>
+        <li>Your colleague opens <b>Capacity rules</b>, clicks <b>Add</b> on <b>Announcements</b>, then <b>Cancel</b>.</li>
+        <li>Remove your colleague from <b>Lab admins</b> and add them to <b>Lab users</b> instead. Save. Your colleague reloads.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the sidebar shows only <b>My samples</b>, <b>Lab view</b> and <b>Reports</b>, with <b>Signed in as</b> and their name at the bottom. Capacity requests show no buttons. Step 3: <b>Admin</b> appears in their sidebar. Their Settings tab has no <b>Admins</b> field – it starts at Lab users. Step 4: <b>Settings saved.</b> for them, and your Admins list is unchanged. Step 5: the <b>New announcement</b> form opens. Step 6: <b>Admin</b> disappears from their sidebar, and any request still marked Requested in <b>Capacity requests</b> now shows <b>Approve</b> and <b>Ask to move</b>.</p></article>
+  </div>
+</section>
+
+<section id="sp-rules" data-section="sp-rules">
+  <div class="sechead"><h2>B. Lab capacity rules</h2><span class="who">Admin or Lab admin</span></div>
+  <p>Each rule is one item on the Lab Capacity board. For every day and every category, the app picks one limit (<b>Max per day</b>) and one warning level (<b>Warn when this many left</b>). Rules with no categories chosen apply to all six categories. A rule with <b>Max per day</b> left blank never sets the limit. It only adds a cut-off time or message.</p>
+  <div class="tablewrap"><table><thead><tr><th>Rule type</th><th>Used when</th><th>Beats</th></tr></thead><tbody>
+    <tr><td><b>Date overrides</b></td><td>The day falls between <b>From</b> and <b>To</b>, Max per day is filled in and the rule is Active</td><td>Weekday rules and baselines</td></tr>
+    <tr><td><b>Weekday rules</b></td><td>The day is one of the chosen weekdays and Max per day is filled in</td><td>Baselines</td></tr>
+    <tr><td><b>Baseline limits</b></td><td>Every day, if nothing above applies</td><td>—</td></tr>
+    <tr><td><b>Announcements</b></td><td>Never set a limit. They only show a message on the chosen dates</td><td>—</td></tr>
+  </tbody></table></div>
+  <div class="callout warn">Rules apply to everyone as soon as you save, including real consultants planning real visits. Only use your TEST dates, start every rule name with “TEST –” and your first name, and archive your TEST rules when you have finished (see Help).</div>
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>Rule form checks</h4><span class="role">Admin or Lab admin</span></header>
+      <ol>
+        <li>Click <b>Admin</b>, then <b>Capacity rules</b>. Look at the four panels and compare the <b>Baseline limits</b> lines with the Baseline items on the Lab Capacity board.</li>
+        <li>Click <b>Add</b> on <b>Date overrides</b>. Read the help line, then click <b>Save</b> with everything empty.</li>
+        <li>Type the name “TEST – Sam – check” and click <b>Save</b> again.</li>
+        <li>Try typing letters into <b>Max per day</b> and <b>Warn when this many left</b>. Click <b>Cancel</b>.</li>
+        <li>Click <b>Add</b> on each of the other three panels in turn. Note which fields each form shows, then click <b>Cancel</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Four panels: <b>Baseline limits</b>, <b>Weekday rules</b>, <b>Date overrides</b> and <b>Announcements</b>, each with an <b>Add</b> button. An empty panel says <b>None yet.</b> Each baseline line shows its categories (or <b>All categories</b>), e.g. “max 45 · warn at 10 left”, matching the board. The form title is <b>New date override</b>, with the help line <b>Replaces everything on these dates. Set the limit to 0 for all categories to close the lab.</b> Saving with no name shows <b>Please give this rule a name.</b> With a name but no dates it shows <b>Please choose the dates.</b> Letters cannot be typed into the number boxes. The forms show: baseline – Name, categories, Max per day, Warn, cut-off, Active; weekday rule – the same plus <b>Weekdays</b> (Mon–Fri only); announcement – only Name, From, To, <b>Message</b> and Active. Nothing is added to the Lab Capacity board.</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Set a test Leg limit for your test Thursday</h4><span class="role">Admin or Lab admin</span></header>
+      <ol>
+        <li>Click <b>Add</b> on <b>Date overrides</b>.</li>
+        <li>Name: “TEST – Sam – Leg limit”. Under <b>Sample categories (none selected = all)</b>, click <b>Leg</b> only.</li>
+        <li><b>From</b> and <b>To</b>: your test Thursday. <b>Max per day</b>: 10. <b>Warn when this many left</b>: 3. Leave <b>Lab cut-off time (optional)</b> and <b>Message</b> empty. Leave <b>Active</b> on. Click <b>Save</b>.</li>
+        <li>Open <b>Lab view</b>, set <b>From</b> and <b>to</b> to your test Thursday.</li>
+        <li>Open the Lab Capacity board and find the new item.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The message <b>Saved.</b> and the form closes. Under Date overrides: “TEST – Sam – Leg limit” with “Leg · dd/mm/yyyy – dd/mm/yyyy · max 10 · warn at 3 left”. In Lab view, the test Thursday Leg row shows <b>Limit</b> 10, <b>Planned</b> 0, <b>Left</b> 10 in green. The other five categories still show their baseline limits. On the Lab Capacity board: Type = Date override, Sample Category = Leg, Max per Day = 10, Warning Level = 3, Dates = your test Thursday, Active ticked. Keep this rule until you finish section G.</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>Which rule wins, switching a rule off, and archiving</h4><span class="role">Admin or Lab admin</span></header>
+      <ol>
+        <li>In <b>Lab view</b> set <b>From</b> = your test Thursday and <b>to</b> = the Friday a week after your test Friday. Write down the Leg <b>Limit</b> on both Fridays (the baseline).</li>
+        <li>In <b>Admin</b> → <b>Capacity rules</b>, add a <b>Weekday rule</b>: name “TEST – Sam – Friday Leg”, category <b>Leg</b>, weekday <b>Fri</b>, Max per day 20, Warn 5. Save. Reload Lab view.</li>
+        <li>Add a <b>Date override</b>: name “TEST – Sam – Friday override”, category Leg, From and To = your test Friday, Max per day 12, Warn 2. Save. Reload Lab view.</li>
+        <li>Click the pencil (<b>Edit</b>) on “TEST – Sam – Friday override”. Switch <b>Active</b> off and save. Reload Lab view.</li>
+        <li>Click the archive icon on “TEST – Sam – Friday override”, then on “TEST – Sam – Friday Leg”. Reload Lab view.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the weekday rule line reads “Leg · Friday · max 20 · warn at 5 left”. Both Fridays show Leg Limit 20, and the Thursdays don't change (your test Thursday stays at 10). Step 3: test Friday shows Leg Limit 12, and the next Friday still shows 20. Step 4: the form title is <b>Edit date override</b> with your values filled in. After saving, the line shows an <b>Off</b> badge and test Friday goes back to 20. On the board, Active is unticked. Step 5: each rule disappears straight away with the message <b>Rule archived.</b> – there is no “are you sure?” step. Both items are archived on the Lab Capacity board. Both Fridays go back to the baseline from step 1. If your TEST weekday rule doesn't take effect, the board may already have another Friday Leg rule. Write down which limit you saw and report it.</p></article>
+
+    <article class="test" data-id="B4"><header><span class="tid">B4</span><h4>Cut-off times, messages and announcements</h4><span class="role">Admin or Lab admin</span></header>
+      <ol>
+        <li>Add a <b>Date override</b>: name “TEST – Sam – early courier”, no categories, From and To = your test Friday. Leave <b>Max per day</b> and <b>Warn when this many left</b> empty. <b>Lab cut-off time (optional)</b>: 12:30. <b>Message</b>: “TEST – Sam – courier collects at 12:30”. Save.</li>
+        <li>Add an <b>Announcement</b>: name “TEST – Sam – lab notice”, From and To = your test Thursday, Message: “TEST – Sam – lab short-staffed”. Save.</li>
+        <li>In <b>Lab view</b>, set From = your test Thursday and to = the Friday a week after your test Friday.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The override line reads “All categories · dd/mm/yyyy – dd/mm/yyyy · cut-off 12:30”, with the message underneath. The announcement shows only its dates and message. In Lab view, the test Friday card shows <b>Samples must reach the lab by 12:30</b> and the message “TEST – Sam – courier collects at 12:30”. Its limits are unchanged, because a blank Max per day doesn't change the limit. The following Friday shows <b>Samples must reach the lab by 14:00</b> (unless a real rule sets another time). The test Thursday card shows “TEST – Sam – lab short-staffed”. Thursdays never show a cut-off line. Keep both rules until you finish section D.</p></article>
+  </div>
+</section>
+
+<section id="sp-sync" data-section="sp-sync">
+  <div class="sechead"><h2>C. Sample day rows and keeping them in step</h2><span class="who">Quotes &amp; Orders team, allocator, consultant</span></div>
+  <p>Each visit that takes samples has one Samples by Day row per day at site. Day 1's <b>Sample Date</b> is the visit's <b>Planned Start Date</b>. Each later day is the next working day: weekends, England and Wales bank holidays and days the lab is closed are skipped. You can't type a sample date in the app. You move the visit instead.</p>
+  <div class="tablewrap"><table><thead><tr><th>What changes</th><th>Where</th><th>When the sample rows follow</th></tr></thead><tbody>
+    <tr><td>Order processed, quote line has planned samples</td><td>Order Processor</td><td>Straight away: one row per day, day 1 holds the samples, no date or consultant yet</td></tr>
+    <tr><td>Visit allocated or re-allocated</td><td>Workload Planner</td><td>Straight away: Sample Date and Consultant are set</td></tr>
+    <tr><td>Planned Start Date or Planned Days at Site</td><td>Visits board</td><td>The next time someone opens <b>My samples</b> or <b>Team samples</b> showing that visit, <b>Lab view</b> with those dates in range, or <b>Reports → Free capacity</b> for that month</td></tr>
+    <tr><td>Assigned Consultant</td><td>Visits board</td><td>The next time <b>My samples</b> or <b>Team samples</b> showing that visit is opened (Lab view doesn't update the consultant)</td></tr>
+    <tr><td>A visit with a sample work type but no rows yet</td><td>—</td><td>Rows are created the next time its consultant opens <b>My samples</b> (or a manager opens <b>Team samples</b>)</td></tr>
+  </tbody></table></div>
+  <div class="callout">The app does not update rows on a timer. To make it catch up after you change a visit on the Visits board, open <b>Lab view</b> with the new date (or the old one) in the range, or reload <b>My samples</b>. Lab view and Free capacity then show <b>Updated 1 visit's sample dates</b> (or <b>Updated N visits' sample dates</b>). If a lot needs updating, the page stops after about 10–12 seconds. My samples may then say <b>N visits are still being set up – refresh in a moment to see them.</b> Reload to finish.</div>
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>Processing the order creates the day rows</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol>
+        <li>On the Quotes &amp; Invoices board, open line 1 of your TEST quote and look at <b>🟢Planned Samples (per visit)</b>.</li>
+        <li>Open the approved TEST order in the Order Processor. Look at line 1 in the lines table, then process the order.</li>
+        <li>Open the Samples by Day board and search for your report number.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: something like {"W1-3 (S) LEG":[6,4,0,0],"W8-2 (No PS)":[2,2,0,0]}. Step 2: line 1 shows <b>Samples: 8 on day 1</b> (6 + 2). Step 3: two rows per line 1 visit: “report/1 – Day 1”, “report/1 – Day 2”, “report/2 – Day 1”, “report/2 – Day 2” (and more if the line has more visits). Each is linked to its visit, with <b>Day Number</b> 1 or 2 and <b>Sample Status</b> = Planned. Visit /1 Day 1 has W1-3 (S) LEG 6 and W8-2 (No PS) 2. Visit /2 Day 1 has W1-3 (S) LEG 4 and W8-2 (No PS) 2. Every other test column, and every Day 2 column, is 0. <b>Sample Date</b> and <b>Consultant</b> are empty. The line 2 visit has no rows.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>Allocating in the Workload Planner sets sample dates and consultant</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>In the Workload Planner, allocate visit /1 to yourself for 2 days starting on your test Friday.</li>
+        <li>Allocate visit /2 to yourself for 2 days starting on your test Tuesday.</li>
+        <li>Allocate the line 2 visit to yourself for 1 day on any weekday in the same fortnight (not your test Thursday).</li>
+        <li>Without opening the Sample Planner, look at the Samples by Day rows for visits /1 and /2.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>On the Visits board, visit /1 has you as <b>Assigned Consultant</b>, <b>Visit Stage</b> = Allocated, <b>Planned Start Date</b> = test Friday, <b>Planned Days at Site</b> = 2. On Samples by Day, straight away: /1 Day 1 Sample Date = test Friday, /1 Day 2 = the Monday after (the weekend is skipped), and Consultant = you on both rows. /2 Day 1 = test Tuesday, /2 Day 2 = the Wednesday. If the dates or consultant are still empty, report it – the Workload Planner should fill them in when it allocates.</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>Rows are created for sample work types with no planned samples</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>Check that Legionella Risk Assessment is in <b>Work types that take samples</b> (Admin → Settings), or ask an admin.</li>
+        <li>On Samples by Day, search for the line 2 visit's name. There should be no rows.</li>
+        <li>Open the Sample Planner on <b>My samples</b>. Wait for <b>Loading your visits and checking day rows…</b> to finish.</li>
+        <li>Search Samples by Day for the line 2 visit again.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The line 2 visit appears in My samples as <b>Day 1 of 1</b>. Its sample date is the date you allocated, and all sample boxes are blank. On Samples by Day there is a new row “visit name – Day 1”, linked to the visit, with Day Number 1, the Sample Date, Consultant = you, Sample Status = Planned and empty test columns. A visit whose work type is not in the list, and whose quote line has no planned samples, never gets rows and never appears in My samples.</p></article>
+
+    <article class="test" data-id="C4"><header><span class="tid">C4</span><h4>Changing the visit date on the Visits board</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On the Visits board, change visit /1's <b>Planned Start Date</b> from your test Friday to your test Thursday. Leave Planned Days at Site at 2.</li>
+        <li>Look at /1's rows on Samples by Day. They may still show the old dates – the app hasn't run yet.</li>
+        <li>Open <b>Lab view</b>. Set <b>From</b> = your test Thursday and <b>to</b> = the Monday after.</li>
+        <li>Look at /1's rows on Samples by Day again, then open <b>My samples</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Lab view shows <b>Updated 1 visit's sample dates</b> above the charts (the number can be higher if other visits also needed updating). /1 Day 1 Sample Date = test Thursday and Day 2 = test Friday on the board and in My samples. If the dates haven't changed, reload Lab view once. Lab view only checks visits whose Planned Start Date is in the range (or up to 14 days before it), or whose sample days are currently in the range – so the range must include the new date or the old one.</p></article>
+
+    <article class="test" data-id="C5"><header><span class="tid">C5</span><h4>Adding and removing days at site</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On the Visits board, set visit /2's <b>Planned Days at Site</b> to 3. Reload <b>My samples</b>.</li>
+        <li>On /2 Day 2, enter <b>W1-3 (S) LEG</b> = 3. On /2 Day 3, enter <b>W7 (FF)</b> = 2. Press Tab after each.</li>
+        <li>On the Visits board, set /2's Planned Days at Site to 1. Reload My samples.</li>
+        <li>Set /2's Planned Days at Site back to 2. Reload My samples.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: /2 shows <b>Day 1 of 3</b>, <b>Day 2 of 3</b> and <b>Day 3 of 3</b>. Day 3's sample date is the Thursday after test Tuesday. Samples by Day has a new blank row “report/2 – Day 3”. Step 3: a message reads <b>report/2: days were removed, so their samples were moved onto day 1.</b> Only <b>Day 1 of 1</b> is left, showing W1-3 (S) LEG 7 (4 + 3), W7 (FF) 2 and W8-2 (No PS) 2. The <b>Leg</b> total is 9 and <b>Pot</b> is 2. Test boxes that added up to 0 now show blank. On the board, the Day 2 and Day 3 rows are archived. Step 4: a new, blank Day 2 appears on the Wednesday after test Tuesday.</p></article>
+
+    <article class="test" data-id="C6"><header><span class="tid">C6</span><h4>Changing the consultant</h4><span class="tag">Two people</span><span class="role">Consultant + colleague</span></header>
+      <ol>
+        <li>On the Visits board, change visit /2's <b>Assigned Consultant</b> from you to your colleague.</li>
+        <li>Reload your <b>My samples</b>.</li>
+        <li>Your colleague opens their <b>My samples</b>. Then look at /2's rows on Samples by Day.</li>
+        <li>Change /2's Assigned Consultant back to you, and reload your My samples.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: /2 is no longer in your list. Step 3: /2 appears in your colleague's list and they can edit it. On Samples by Day, the <b>Consultant</b> column on /2's rows now shows your colleague. Step 4: /2 is back in your list, and the rows show you as Consultant again. If a visit's Assigned Consultant is cleared, the rows keep the last consultant.</p></article>
+
+    <article class="test" data-id="C7"><header><span class="tid">C7</span><h4>A closed lab day is skipped</h4><span class="tag">Admin</span><span class="role">Admin or Lab admin</span></header>
+      <ol>
+        <li>Open <b>Lab view</b> with From and to = your test Friday. Check that no visits are listed and every Planned value is 0 apart from your own. If not, don't do this test – report it as not run.</li>
+        <li>Add a <b>Date override</b>: name “TEST – Sam – lab closed”, no categories, From and To = your test Friday, <b>Max per day</b> = 0. Save.</li>
+        <li>Open Lab view with From = your test Thursday and to = the Monday after.</li>
+        <li>Check /1's rows on Samples by Day and in My samples.</li>
+        <li>Archive “TEST – Sam – lab closed”. Open Lab view again with the same range.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 3: the test Friday card shows <b>Limit</b> 0 for all six categories, with <b>Left</b> 0 or below in red. The page shows <b>Updated 1 visit's sample dates</b>. Step 4: /1 Day 2 has moved from test Friday to the Monday after. Step 5: <b>Rule archived.</b>, then Lab view shows the update notice again and /1 Day 2 is back on test Friday.</p></article>
+  </div>
+  <div class="callout warn">Closing the lab moves every visit's sample days off that date, not just yours, the next time anyone opens the app. Only close a TEST date with no real visits on it, and archive the rule straight after the test.</div>
+</section>
+
+<section id="sp-mysamples" data-section="sp-mysamples">
+  <div class="sechead"><h2>D. My samples</h2><span class="who">Consultant</span></div>
+  <p>My samples lists one row per visit day for every visit where you are the Assigned Consultant. You type the number of each lab test. The app adds them up into six lab categories and checks them against the lab's capacity for that day. Each box saves when you press Enter or Tab or click away. Saving is never blocked – going over capacity asks you for a reason instead.</p>
+  <div class="tablewrap"><table><thead><tr><th>Category total</th><th>Made up of</th></tr></thead><tbody>
+    <tr><td><b>Air</b></td><td>A5-1 (SA) + A5-2 (CA) + CR6-1 (SA) + CR6-2 (CA)</td></tr>
+    <tr><td><b>CT</b></td><td>W1-3 (S) TVC + W2-3 (S) TVC + W3-3 (S) TVC</td></tr>
+    <tr><td><b>Non-Pot</b></td><td>W6-1 TVC (HW) + W6-1 TVC (CW)</td></tr>
+    <tr><td><b>Pot</b></td><td>W8-2 (No PS)</td></tr>
+    <tr><td><b>Pot-PS</b></td><td>W8-1 (+PS)</td></tr>
+    <tr><td><b>Leg</b></td><td>W1-3 (S) LEG + W2-3 (S) LEG + W3-3 (S) LEG + W7 (FF) + W7 (1L)</td></tr>
+  </tbody></table></div>
+  <div class="tablewrap"><table><thead><tr><th>Filter</th><th>Shows visits where…</th></tr></thead><tbody>
+    <tr><td><b>Not completed</b> (default)</td><td>Visit Stage is Suspect, Ready for Allocation, Allocated or Confirmed with Customer</td></tr>
+    <tr><td><b>Next 6 weeks</b></td><td>Planned Start Date is between today and 42 days ahead (any stage)</td></tr>
+    <tr><td><b>Next 3 months</b></td><td>Planned Start Date is between today and 91 days ahead (any stage)</td></tr>
+    <tr><td><b>Overdue</b></td><td>Not completed and Planned Start Date is before today</td></tr>
+  </tbody></table></div>
+  <div class="tablewrap"><table><thead><tr><th>Left on the day</th><th>Colour</th><th>Example with Max per day 10, warn at 3 left</th></tr></thead><tbody>
+    <tr><td>More than the warning level</td><td>Green</td><td>6 planned → <b>4 left</b></td></tr>
+    <tr><td>At or below the warning level, above 0</td><td>Amber</td><td>7 planned → <b>3 left</b>; 9 planned → <b>1 left</b></td></tr>
+    <tr><td>0 or below</td><td>Red</td><td>10 planned → <b>0 left</b>; 11 planned → <b>-1 left</b></td></tr>
+    <tr><td>No limit set for the category</td><td>Grey</td><td><b>No limit</b></td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>Page layout, filters and empty state</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>Click <b>My samples</b>. Look at the heading, the filter buttons and the column headings.</li>
+        <li>Find visit /1. Hover over its sample date. Click the date under <b>Planned start</b>.</li>
+        <li>Click <b>Next 6 weeks</b>, then <b>Next 3 months</b>, then <b>Overdue</b>, then <b>Not completed</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The page heading <b>My samples</b> with “Hello” and your first name above it. <b>Not completed</b> is highlighted. Columns: <b>Report no</b>, <b>Site</b> (with the town underneath), <b>Work type</b>, <b>Planned start</b>, <b>Day</b>, <b>Sample date</b>, the 16 test columns, the six totals <b>Air</b>, <b>CT</b>, <b>Non-Pot</b>, <b>Pot</b>, <b>Pot-PS</b>, <b>Leg</b>, then <b>Tank</b>, <b>No samples</b> and <b>Notes</b>. /1 shows <b>Day 1 of 2</b> and <b>Day 2 of 2</b>. The sample date has <b>Set from the visit</b> underneath, and hovering shows <b>Change the visit's planned start date to move it</b>. The Planned start link opens the visit on the Visits board in a new tab. <b>Next 6 weeks</b> hides your TEST visits (they are more than 6 weeks away). <b>Next 3 months</b> shows them again. <b>Overdue</b> (if you have no overdue visits) shows <b>Nothing to plan here</b> and <b>You have no visits matching this filter. Try another filter above.</b></p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>Enter sample numbers and check the totals</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On visit /1 <b>Day 2</b> (test Friday), enter: <b>A5-1 (SA)</b> 3, <b>CR6-1 (SA)</b> 2, <b>W1-3 (S) TVC</b> 1, <b>W2-3 (S) TVC</b> 1, <b>W6-1 TVC (HW)</b> 2, <b>W6-1 TVC (CW)</b> 1, <b>W8-1 (+PS)</b> 1. Press Enter or Tab after each.</li>
+        <li>Click into <b>W8-2 (No PS)</b> on the same row and try typing “abc”.</li>
+        <li>Clear <b>W8-1 (+PS)</b> (delete the number) and press Tab.</li>
+        <li>Reload the page. Open /1 Day 2 on Samples by Day.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The totals update as you go: <b>Air</b> 5 (3 + 2), <b>CT</b> 2 (1 + 1), <b>Non-Pot</b> 3 (2 + 1), <b>Pot-PS</b> 1. After you clear W8-1 (+PS), Pot-PS goes blank – a total of 0 shows as blank. Letters can't be typed. After reloading, the numbers are still there. On the board, the test columns match, W8-1 (+PS) is empty and the board's total columns show the same sums.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Tank samples, No samples and Notes</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On /1 Day 2, enter 4 in <b>Tank</b> and press Tab.</li>
+        <li>Tick <b>No samples</b>.</li>
+        <li>In <b>Notes</b> (shows <b>Add a note</b> when empty), type “TEST – Sam – access via loading bay” and press Enter.</li>
+        <li>Check /1 Day 2 on Samples by Day, and the test Friday card in <b>Lab view</b>. Then untick No samples.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>On the board: <b>Tank Samples</b> = 4, <b>No Samples</b> ticked, <b>Notes</b> = your text. The category totals on the row don't change (Air 5, CT 2, Non-Pot 3). Lab view still counts this row's samples on test Friday, because ticking No samples doesn't remove the numbers. None of these three changes appear in Reports → Capacity changes.</p></article>
+
+    <article class="test" data-id="D4"><header><span class="tid">D4</span><h4>Show and hide column groups</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>Next to <b>Show</b>, click <b>Water</b>, then <b>Computer room</b>.</li>
+        <li>Reload the page. Then open <b>Team samples</b> if you have it.</li>
+        <li>Ask a colleague whether their My samples still shows all columns.</li>
+        <li>Click <b>Water</b> and <b>Computer room</b> again to bring them back.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Hidden groups are struck through. Hiding Water removes the 11 W… test columns. Hiding Computer room removes <b>CR6-1 (SA)</b> and <b>CR6-2 (CA)</b>. <b>A5-1 (SA)</b> and <b>A5-2 (CA)</b> stay, and the six total columns always stay. Your choice is remembered after a reload and also applies in Team samples. It is only for you – your colleague's view doesn't change.</p></article>
+
+    <article class="test" data-id="D5"><header><span class="tid">D5</span><h4>Capacity left: green, amber and red</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>Scroll below the grid to <b>Lab capacity left on your sample dates</b>. Find the card for your test Thursday and the one for your test Friday.</li>
+        <li>On /1 <b>Day 1</b> (test Thursday), enter <b>W7 (FF)</b> = 1 and press Tab.</li>
+        <li>Enter <b>W7 (1L)</b> = 2 and press Tab.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the test Thursday card has six chips. <b>Leg</b> shows <b>4 left</b> in green (limit 10 − 6 planned), and Pot shows its baseline minus 2 (minus any other visits' Pot samples that day). The card also shows “TEST – Sam – lab short-staffed”. The test Friday card shows <b>Samples must reach the lab by 12:30</b> and “TEST – Sam – courier collects at 12:30”. Step 2: Leg total on the row is 7, and the Leg chip changes to <b>3 left</b> in amber. Step 3: Leg total 9, chip <b>1 left</b> in amber. No pop-up appears in either step. (If you added someone else's planned number to the limit in “Before you start”, the “left” figures are the same.)</p></article>
+
+    <article class="test" data-id="D6"><header><span class="tid">D6</span><h4>Going over capacity: the warning and “Not now”</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On /1 Day 1, change <b>W7 (1L)</b> from 2 to 3 and press Tab.</li>
+        <li>Read the pop-up. Type “ab” in the reason box and look at the send button.</li>
+        <li>Click <b>Not now</b>. Check /1 Day 1 on Samples by Day.</li>
+        <li>Change W7 (1L) back to 2 and press Tab.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The Leg total is 10 and a pop-up titled <b>Over lab capacity</b> opens. It shows “report/1 · Day 1 · dd/mm/yyyy. <b>Your change has been saved.</b>” and the red message <b>The lab have reached full capacity for Leg samples on this day. Please speak to the laboratory or your line manager about this.</b> Below that: <b>Why do these samples need to be taken on this day?</b>, the hint <b>For example: the site can only give access on this date.</b> and <b>We'll let the lab know – you can also email</b> followed by the inbox address from A1. <b>Send to the lab</b> stays greyed out until the reason has 3 or more characters. After <b>Not now</b>, W7 (1L) = 3 on the board. The row's Leg boxes with numbers have red borders, the Leg total is red and the chip shows <b>0 left</b> in red. Step 4: no pop-up, because lowering a number never warns. The chip goes back to <b>1 left</b> in amber and the red borders go.</p></article>
+
+    <article class="test" data-id="D7"><header><span class="tid">D7</span><h4>Sending a capacity request to the lab</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On /1 Day 1, change <b>W7 (1L)</b> to 4 and press Tab.</li>
+        <li>In the pop-up, type “TEST – Sam – site only open on this day” and click <b>Send to the lab</b>.</li>
+        <li>Check the Report no cell, /1 Day 1 on Samples by Day, and the Updates on visit /1 on the Visits board.</li>
+        <li>Ask your lab user colleague to check their monday.com notifications.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The Leg total is 11 and the chip shows <b>-1 left</b>. The button shows <b>Sending…</b>, then the message <b>Thanks – we've sent your request to the lab.</b> and the pop-up closes. Under the report number: <b>Capacity: Requested</b>. On Samples by Day: <b>Capacity Request</b> = Requested and the reason saved in the capacity request reason column. On visit /1, a new update reads “Capacity request from [your name] for report/1 – Day 1 (dd/mm/yyyy) – Leg over capacity. Reason: TEST – Sam – site only open on this day”. Every Lab user gets a notification with the same text. No email is sent – the inbox address is only shown as a link.</p></article>
+
+    <article class="test" data-id="D8"><header><span class="tid">D8</span><h4>Previous visits panel</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>On the Visits board, set visit /1's <b>Visit Stage</b> to Visit Carried Out (just for this test).</li>
+        <li>In My samples, click the clock icon next to visit /2's report number.</li>
+        <li>Close the panel. Click <b>Next 3 months</b> and open the clock icon next to visit /1.</li>
+        <li>Set /1's Visit Stage back to Allocated.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>A side panel titled <b>Previous visits</b> with “Last 3 visits at [your TEST site] for the same work type, so you can see if you usually plan more or fewer.” The highlighted box “This visit · report/2” shows Leg 9 and Pot 2. Below it, “report/1 · dd/mm/yyyy · [your name]” shows Air 5 (you -5), CT 2 (you -2), Non-Pot 3 (you -3), Pot 2, Pot-PS 0 and Leg 11 (you -2). The bracket is this visit minus the earlier one, and it is left out when they are equal. (These numbers assume you did C5, D2 and D7 exactly as written.) Step 3: visit /1 has no earlier visit, so the panel says <b>No earlier visits found at this site for this work type.</b> Only visits at Visit Carried Out, Report Written, Proofreading, Quality Check or Published that started before this one are listed.</p></article>
+  </div>
+</section>
+
+<section id="sp-team" data-section="sp-team">
+  <div class="sechead"><h2>E. Team samples</h2><span class="who">Team manager, deputy, allocator or admin</span></div>
+  <p>Team samples is the same grid for everyone in one team, with a <b>Consultant</b> column. Team membership comes from the Team column on the Consultant Skills &amp; Availability board. Managers can look at any team, but can only edit visits of consultants in the team(s) they are listed for, unless they are listed for <b>All teams</b> or are an admin.</p>
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>Team view: filter, sort and group</h4><span class="role">Team manager</span></header>
+      <ol>
+        <li>Click <b>Team samples</b>. Choose your team in the drop-down at the top.</li>
+        <li>In <b>Filter by site, consultant, report…</b>, type the name of your TEST site.</li>
+        <li>Choose <b>Sort: Most Leg</b>.</li>
+        <li>Choose <b>Group: Category over capacity</b>, then <b>Group: Sample date</b>, then <b>Group: No grouping</b>.</li>
+        <li>Clear the search, click <b>Overdue</b>, and choose a team with no overdue visits.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The heading <b>Team samples</b> with “Managers” above it. A <b>Consultant</b> column after Report no. By default rows are grouped by consultant, with headers like “Your name · 6 days”. The search leaves only your TEST rows. Most Leg puts /1 Day 1 (Leg 11) at the top. <b>Category over capacity</b> gives a group <b>Leg over capacity · 1 day</b> holding /1 Day 1, and <b>Within capacity</b> for the rest. <b>Sample date</b> groups by dates (dd/mm/yyyy). <b>No grouping</b> removes the headers. A team with nothing to show displays <b>Nothing to plan here</b> and <b>No visits for [team] match this filter.</b></p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Who can edit in Team samples</h4><span class="tag">Two people</span><span class="role">Team manager + Admin</span></header>
+      <ol>
+        <li>Make sure your entry in <b>Team managers, deputies and allocators</b> is for your own team only (not All teams).</li>
+        <li>On the Visits board, set visit /2's Assigned Consultant to your colleague (same team).</li>
+        <li>In <b>Team samples</b>, choose your team. On /2 Day 1, click <b>Notes</b>, type “TEST – manager note” and press Enter.</li>
+        <li>Switch the team drop-down to a different team. Click into any box but <b>do not type</b> – these are real visits.</li>
+        <li>An admin changes your manager entry to <b>All teams</b> and saves. Reload Team samples, choose that other team again and click into a box. Press Tab without typing.</li>
+        <li>Set /2's Assigned Consultant back to yourself.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 3: the Consultant column shows your colleague on /2 and the note saves to <b>Notes</b> on the Samples by Day row. Step 4: every box on the other team's rows is greyed out, you can't type, and Notes shows no <b>Add a note</b> hint. Step 5: the same boxes are now open for editing. Nothing changes on the board because you didn't type anything.</p></article>
+  </div>
+</section>
+
+<section id="sp-lab" data-section="sp-lab">
+  <div class="sechead"><h2>F. Lab view</h2><span class="who">Lab user (anyone can view)</span></div>
+  <p>Lab view shows each weekday in a date range: the limit, what is planned, renewal work expected and what is left, for all six categories. It also lists the visits taking samples each day and the capacity requests from consultants. <b>Left</b> is Limit minus Planned. Renewal expected is shown alongside but is not taken off Left. Visits at Ghost Visit or To Kill are not counted.</p>
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>Day by day numbers and charts</h4><span class="role">Lab user</span></header>
+      <ol>
+        <li>Click <b>Lab view</b> and don't change the dates. Count the day cards under <b>Day by day</b>.</li>
+        <li>Set <b>From</b> = your test Thursday and <b>to</b> = the Friday a week after your test Friday.</li>
+        <li>Read the test Thursday table. Hover over the test Thursday bar on the <b>Leg</b> chart.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: <b>From</b> is this week's Monday and <b>to</b> is next week's Friday – 10 cards, Monday to Friday, with no weekends. Six charts (Air, CT, Non-Pot, Pot, Pot-PS, Leg), each with the key <b>solid = planned · hatched = renewal expected · dashed = limit</b>. Step 2: 7 cards (Thursday, Friday, Monday to Friday), each titled like “Thursday dd/mm/yyyy”. Step 3: the columns are <b>Category</b>, <b>Limit</b>, <b>Planned</b>, <b>Renewal expected</b>, <b>Left</b>. Leg shows Limit 10, Planned 11, Renewal expected 0, Left -1 in red. Pot shows Planned 2 (more if other visits have Pot samples that day) and Left = Limit minus Planned. On the Leg chart the test Thursday bar is red and the dashed line drops to 10 on that day. The pop-up shows the date with Planned, Renewal expected and Limit.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>Visits on each day, and cancelled visits</h4><span class="role">Lab user</span></header>
+      <ol>
+        <li>With the same range, look under the test Thursday and test Friday tables.</li>
+        <li>Find the day of the line 2 visit (no samples).</li>
+        <li>On the Visits board, set visit /1's <b>Visit Stage</b> to To Kill. Reload Lab view.</li>
+        <li>Set /1's Visit Stage back to Allocated and reload.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Under test Thursday: “[company] · report/1 · [TEST site]”, then “[your name] · Water Quality Assessment · starts dd/mm/yyyy · day 1 of 2”, and on the right “Pot 2 · Leg 11”. Under test Friday: report/1 “day 2 of 2” with “Air 5 · CT 2 · Non-Pot 3”. The line 2 visit is not listed because it has no samples. A day with no samples at all says <b>No visits with samples on this day.</b> Step 3: on test Thursday, Planned drops by 11 for Leg and 2 for Pot, Left goes up by the same amount, and /1 is no longer listed. Step 4: everything is back.</p></article>
+
+    <article class="test" data-id="F3"><header><span class="tid">F3</span><h4>Date range and “Only over-capacity days”</h4><span class="role">Lab user</span></header>
+      <ol>
+        <li>Keep the range from F1. Switch on <b>Only over-capacity days</b>.</li>
+        <li>Change the range to next week only (assuming nothing is over there).</li>
+        <li>Switch the toggle off. Set From and to to the same Saturday.</li>
+        <li>Set <b>to</b> to a date before <b>From</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: only the test Thursday card is left (Leg is red), and the charts only show that day. Step 2: <b>No over-capacity days in this range.</b> Step 3: <b>No working days in this range.</b> A day also counts as over capacity when Planned + Renewal expected is more than the Limit, even if Left is still above 0 (see F4). While the page reloads you see <b>Updating…</b>. Step 4: the page doesn't reload and keeps showing the previous days.</p></article>
+
+    <article class="test" data-id="F4"><header><span class="tid">F4</span><h4>Renewal expected</h4><span class="role">Lab user + Sales</span></header>
+      <ol>
+        <li>On your TEST renewal opportunity (Opportunity Type = Renewal, not processed), build a quote line in the Quote Builder with <b>W8-1 (+PS)</b> Visit 1 = 40 in <b>Planned work (air / water)</b>.</li>
+        <li>Make sure the line's <b>First Visit Week Number</b> and <b>First Visit Calendar Year</b> are your test Thursday's week, e.g. week 3 of 2027 → Monday 18/01/2027.</li>
+        <li>In Lab view, set a range that includes the Monday of that week. Look at the Monday's Pot-PS row and chart, then switch on <b>Only over-capacity days</b>.</li>
+        <li>Set the TEST renewal opportunity's <b>Deal Stage</b> to Lost. Reload Lab view.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>On that Monday only, the Pot-PS row shows <b>Renewal expected</b> 40 and a hatched bar on the Pot-PS chart. <b>Left</b> doesn't change, because renewal work is not taken off. If 40 is more than the Pot-PS Limit (e.g. 35), that Monday stays visible with Only over-capacity days switched on, even though Left is green. Step 4: Renewal expected goes back to 0. Opportunities that are Processed or Lost, and quote lines that are Cancelled, Declined, Superseded or marked Made Dead, are not counted.</p></article>
+
+    <article class="test" data-id="F5"><header><span class="tid">F5</span><h4>Answering capacity requests</h4><span class="tag">Two people</span><span class="role">Lab user + Consultant</span></header>
+      <ol>
+        <li>The lab user opens <b>Lab view</b> and scrolls to <b>Capacity requests</b>. Find the request from D7.</li>
+        <li>The lab user clicks <b>Ask to move</b>, checks <b>Send</b> is greyed out, types “TEST – could these go on Tuesday instead?” and clicks <b>Send</b>.</li>
+        <li>The consultant changes /1 Day 1 <b>W7 (1L)</b> from 4 to 5 in My samples and sends a new request with any reason.</li>
+        <li>The lab user reloads Lab view and clicks <b>Approve</b> on the request.</li>
+        <li>Check /1 Day 1 on Samples by Day and the consultant's notifications. A non-lab colleague opens Lab view and looks at the same list.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “report/1 – Day 1 · dd/mm/yyyy · [consultant]”, the reason, “Pot 2 · Leg 11” and an amber <b>Requested</b> badge. Requests are listed Requested first, then Move Date, then Approved. Step 2: <b>Sent – the consultant has been asked to move it.</b> The badge turns red <b>Move Date</b> and “Lab: TEST – could these go on Tuesday instead?” appears. The consultant gets the notification “The lab asked you to move report/1 – Day 1 to another date: TEST – could these go on Tuesday instead?”. Step 3: the request goes back to <b>Requested</b> with the new reason, and the row shows Leg 12. Step 4: <b>Approved – the consultant has been told.</b> and a green <b>Approved</b> badge with “Lab: Approved by the lab.” On the board, <b>Capacity Request</b> = Approved and <b>Lab Response</b> = Approved by the lab. The consultant is notified “The lab approved your capacity request for report/1 – Day 1.” The non-lab colleague sees the list but no buttons. With no requests at all, the list says <b>No capacity requests at the moment.</b></p></article>
+  </div>
+</section>
+
+<section id="sp-reports" data-section="sp-reports">
+  <div class="sechead"><h2>G. Reports</h2><span class="who">Any user</span></div>
+  <p><b>Reports</b> has two tabs. <b>Free capacity</b> is a month calendar showing how many samples of one category are left each weekday, using the same sums as Lab view. <b>Capacity changes</b> is a log of every change to a sample number made in the app, with whether it took the day over capacity.</p>
+  <div class="tests">
+    <article class="test" data-id="G1"><header><span class="tid">G1</span><h4>Free capacity calendar</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Click <b>Reports</b>. <b>Free capacity</b> opens first, on this month.</li>
+        <li>Use <b>Next month</b> until you reach your test Thursday's month.</li>
+        <li>With <b>Leg</b> selected, find your test Thursday. Compare a few weekdays with Lab view's Leg <b>Left</b>.</li>
+        <li>Click <b>Pot</b>. Then use <b>Previous month</b> once.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The page heading <b>Free capacity</b> with the month name (e.g. “January 2027”). The calendar has Mon to Sun columns. Weekends are grey with no number, and blank squares fill the start of the month. Test Thursday shows -2 in red (limit 10 − 12 planned). Other weekdays show the same Left as Lab view, in green, amber or red. The line underneath reads <b>Numbers show Leg samples left. Green is quiet, amber is getting busy, red is full.</b> and changes to Pot when you click Pot. All the numbers change to Pot's. The page may show <b>Updated N visits' sample dates</b> when it brings dates into line first.</p></article>
+
+    <article class="test" data-id="G2"><header><span class="tid">G2</span><h4>Capacity changes log</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Click the <b>Capacity changes</b> tab.</li>
+        <li>Find your changes from D5–D7 and F5.</li>
+        <li>In the consultant list, choose yourself, then your colleague, then <b>All consultants</b>.</li>
+        <li>Set <b>From</b> to tomorrow.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The heading changes to <b>Capacity changes</b>. The columns are <b>When</b>, <b>Who</b>, <b>Visit</b>, <b>Day</b>, <b>Change</b> and <b>Over capacity?</b>, newest first. For example: your name with “for [your name]” underneath, report/1, Day 1, “W7 (1L): 2 → 3” with <b>Yes – Leg</b>; “W7 (1L): 3 → 2” with <b>No</b>; “W7 (1L): 2 → 4” <b>Yes – Leg</b>; “W7 (1L): 4 → 5” <b>Yes – Leg</b>; “W7 (FF): 0 → 1” <b>No</b>. D2's changes are on Day 2, e.g. “A5-1 (SA): 0 → 3”, and clearing gives “W8-1 (+PS): 1 → 0”. Tank, No samples and Notes changes are not logged. Choosing yourself shows your visits only. Your colleague shows only changes on visits where they were the consultant. With From set to tomorrow: <b>No changes logged for these filters yet.</b> A <b>Load more</b> button appears when there are more than 50 entries.</p></article>
+  </div>
+</section>
+
+<section id="sp-help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>I changed a visit on the Visits board but the sample dates haven't moved. How long do I wait?</dt>
+    <dd>There is no timer. The rows catch up when someone opens My samples or Team samples showing that visit, Lab view with the date in range, or Reports → Free capacity for that month. Open one of those pages or reload it. Allocating or moving a visit in the Workload Planner updates the rows straight away.</dd>
+    <dt>Why can't I type a sample date?</dt>
+    <dd>Sample dates come from the visit's Planned Start Date and Planned Days at Site. Day 1 is the start date and each next day is the next working day, skipping weekends, England and Wales bank holidays and lab-closed days. Move the visit instead.</dd>
+    <dt>Why do some rows show 0 in every box and others are blank?</dt>
+    <dd>Rows made by the Order Processor are filled with 0. Rows the Sample Planner makes itself are left blank. Both count as nothing planned.</dd>
+    <dt>Where do the starting numbers come from?</dt>
+    <dd>From 🟢Planned Samples (per visit) on the quote line, entered in the Quote Builder's Planned work (air / water) grid. Visit 1 uses the Visit 1 column, and so on. Visits 5 and later use the Visit 4 numbers. Only Day 1 gets them.</dd>
+    <dt>Will the app stop me going over capacity?</dt>
+    <dd>No. Your number is always saved. If it takes the day to 0 or below for that category, you are asked for a reason so the lab can be told. Lowering a number never shows the warning.</dd>
+    <dt>Who hears about a capacity request?</dt>
+    <dd>Everyone in Lab users gets a monday.com notification, and an update is posted on the visit. No email is sent. The lab inbox address in the pop-up is only a link you can use yourself.</dd>
+    <dt>Why are the boxes greyed out on some rows?</dt>
+    <dd>You can only edit visits where you are the Assigned Consultant, visits of consultants in the team you manage, or any visit if you are an admin or a manager for All teams.</dd>
+    <dt>The limit isn't what I expected.</dt>
+    <dd>A Date override beats a Weekday rule, which beats the Baseline. Rules that are switched off, or have Max per day left blank, don't set a limit. If two rules of the same type match, the first one on the Lab Capacity board is used.</dd>
+    <dt>A page says “still being set up” or “Updated N visits' sample dates”.</dt>
+    <dd>The app brought sample dates into line with their visits before showing the numbers. If it ran out of time, reload after a few seconds.</dd>
+    <dt>How do I tidy up when I've finished?</dt>
+    <dd>In Admin → Capacity rules, archive every TEST rule (Leg limit, early courier, lab notice and any others still active). Put TEST visits back to the stage they started at. Leave TEST opportunities and visits for the admin to remove, as described in the main UAT guide. Remove any Settings entries that were only for testing.</dd>
+    <dt>Something didn't load.</dt>
+    <dd>My samples shows <b>We couldn't load the samples.</b> with a <b>Try again</b> button. Lab view shows <b>Lab capacity could not be loaded.</b> Reports show <b>Free capacity could not be loaded.</b> or <b>The change log could not be loaded.</b> Take a screenshot, note the time, and log it as a UAT ticket.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-sp-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity Consulting monday.com UAT results – Sample Planner',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
