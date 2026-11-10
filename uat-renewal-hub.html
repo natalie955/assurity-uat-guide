@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Renewal Hub UAT Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./">End-to-end UAT</a><a href="uat-quote-builder.html">Quote Builder</a><a href="uat-approval-portal.html">Approval Portal</a><a href="uat-order-processor.html">Order Processor</a><a href="uat-workload-planner.html">Workload Planner</a><a href="uat-sample-planner.html">Sample Planner</a><a href="uat-renewal-hub.html" aria-current="page">Renewal Hub</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#rh-start">Before you start</a></li>
+    <li><a href="#rh-open">A. Opening the app <span class="count" data-count="rh-open"></span></a></li>
+    <li><a href="#rh-admin">B. Admin settings, quote numbers and price rates <span class="count" data-count="rh-admin"></span></a></li>
+    <li><a href="#rh-dashboard">C. Renewal urgency dashboard <span class="count" data-count="rh-dashboard"></span></a></li>
+    <li><a href="#rh-header">D. Contract header, warnings and company link <span class="count" data-count="rh-header"></span></a></li>
+    <li><a href="#rh-eligibility">E. When Copy Forward is available, and contract dates <span class="count" data-count="rh-eligibility"></span></a></li>
+    <li><a href="#rh-copy">F. Copy Forward – creating the renewal <span class="count" data-count="rh-copy"></span></a></li>
+    <li><a href="#rh-dates">G. Changing dates on a renewal <span class="count" data-count="rh-dates"></span></a></li>
+    <li><a href="#rh-lines">H. Renewal lines (Quotes &amp; Invoices tab) <span class="count" data-count="rh-lines"></span></a></li>
+    <li><a href="#rh-pricing">I. Price Change tab and contract value <span class="count" data-count="rh-pricing"></span></a></li>
+    <li><a href="#rh-document">J. Renewal document <span class="count" data-count="rh-document"></span></a></li>
+    <li><a href="#rh-workflow">K. Renewal stages – QC, proposal and acceptance <span class="count" data-count="rh-workflow"></span></a></li>
+    <li><a href="#rh-anomaly">L. Anomaly check <span class="count" data-count="rh-anomaly"></span></a></li>
+    <li><a href="#rh-golive">M. Readiness, Before/After report and Make Contract Live <span class="count" data-count="rh-golive"></span></a></li>
+    <li><a href="#rh-help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · Contract Renewal Hub</p>
+  <h1>Contract Renewal Hub: in-depth test script</h1>
+  <p class="lead">Every part of the Contract Renewal Hub: the renewal urgency dashboard, Copy Forward and contract dates, renewal lines and price changes, the renewal document, the QC-to-go-live workflow, the anomaly check, admin settings, and what the app writes to the Opportunities and Quotes & Invoices boards.</p>
+  <p class="byline">Prepared by Mutherboard · November 2026 · Version 1 · 55 tests · 4–5 hours, plus a short check the next morning · For: Account managers and CS managers who handle renewals, a colleague acting as QC reviewer, a renewal admin, and the people set up as Contracts Manager and Finance recipients</p>
+</header>
+
+<section id="rh-start">
+  <h2>Before you start</h2>
+  <p>The Contract Renewal Hub opens on an item on the Opportunities board. On a won contract it creates the renewal in one click (<strong>Copy Forward</strong>), copying every active quote line with new dates and a new Quote No. On the renewal it then takes you through repricing, the renewal document, quality check, customer acceptance, the anomaly check and finally making the new contract live.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>Access to the Opportunities, Quotes &amp; Invoices, Companies, People, Sites and Products &amp; Services boards, and the Contract Renewal Hub view on Opportunities items (open an item and pick the Contract Renewal Hub view; ask your admin if you can’t see it).</li>
+    <li>A renewal admin. Until anyone is listed as a Renewal admin, only the owners of the Opportunities board can change the app’s settings, so the first admin test (B1) must be done by a board owner.</li>
+    <li>A second person who is <em>not</em> a renewal admin (for B2) and a colleague to act as QC reviewer (K3–K5). The reviewer must be subscribed to the Opportunities board, because the reviewer list is built from the board’s subscribers.</li>
+    <li>Before section F: B1 done (renewal admins, Contracts Manager, Finance recipients, confirmation email template), B3 checked (starting quote number) and B4 done (a Legionella price increase from 1 Jan 2027).</li>
+    <li>A small PDF on your computer called “TEST – Sam – PO.pdf” (for K7).</li>
+    <li>When a step says <strong>reload</strong>, close the item and open it again (or refresh the browser). The app does not notice changes you make directly on a board until you reload.</li>
+    <li>Most actions show a short pop-up message at the edge of the screen; the expected wording is given in bold. If an action clearly worked but no pop-up appeared, note it once in your feedback rather than failing every test.</li>
+    <li>Some renewal columns on the Opportunities board start with an orange dot (for example 🟠QC Status). This script leaves the dot out of column names.</li>
+    <li>Nothing in this app emails a client. Even so, use your own email address wherever an email address is asked for.</li>
+  </ul>
+  <h3>Test data</h3>
+  <ul>
+    <li>Use your own first name instead of “Sam” in every record you create.</li>
+    <li>Companies: “TEST – Sam – Riverside Offices Ltd” with Account Manager = you.</li>
+    <li>Sites, each linked to that company and with a town and postcode: “TEST – Sam – Riverside Site A” (Site Code TST-A), “TEST – Sam – Riverside Site B” (TST-B) and “TEST – Sam – Riverside Site C” (TST-C).</li>
+    <li>People: “TEST – Sam – Contact” with First Name and Last Name filled in (e.g. Sam Tester), your own email address, linked to the TEST company.</li>
+    <li>Opportunities – main contract “TEST – Sam – Riverside Offices contract”: Opportunity Type New Business, Deal Stage Won, Frequency Contract, Owner and CS Manager = you, linked to the TEST company and the TEST contact, Project Timeframe 1 Jan 2024 → 31 Dec 2026, Renewal Date 1 Jan 2027, Deal Value £5,100, New Contract Value empty.</li>
+    <li>Five Quotes &amp; Invoices lines linked to the main contract (build them with the Quote Builder or directly on the board) – see the table below. Leave Frequency Unit and Frequency Measure empty and set Assigned Consultant = you on every line.</li>
+    <li>Opportunities – second contract “TEST – Sam – Harbour House contract”: any Deal Stage except Won, Frequency empty, Project Timeframe empty, Order Date 1 Jan 2024, company column empty, Contact = the TEST contact. One line on Site A: Frequency One-off, Visit Frequency Yearly, Contract Period (Years) 3, Actual Selling Price £500, Number of Visits 3, First Visit — Calendar Year 2024, Contract Year Year 1, Week Number 5, Assigned Consultant you.</li>
+    <li>The dashboard records are created during section C.</li>
+  </ul>
+  <div class="tablewrap"><table><thead><tr><th>Line</th><th>Site</th><th>Work Type / Work Category</th><th>Visit Frequency</th><th>Number of Visits</th><th>Actual Selling Price</th><th>First Visit — Calendar Year / Contract Year / Week Number</th><th>Other</th></tr></thead><tbody>
+    <tr><td>1</td><td>Site A</td><td>a Legionella product / Legionella</td><td>Quarterly</td><td>12</td><td>£250</td><td>2024 / Year 1 / 2</td><td>Frequency Contract</td></tr>
+    <tr><td>2</td><td>Site B</td><td>a Workplace Environmental Assessment product / Workplace Environmental Assessment</td><td>Yearly</td><td>3</td><td>£400</td><td>2024 / Year 1 / 10</td><td>Frequency Contract</td></tr>
+    <tr><td>3</td><td>Site A</td><td>any other product (e.g. Fire)</td><td>2-Yearly</td><td>2</td><td>£600</td><td><em>blank</em> / Year 1 / 20</td><td>Frequency Contract</td></tr>
+    <tr><td>4</td><td>Site C</td><td>any</td><td>Yearly</td><td>3</td><td>£100</td><td>2024 / Year 1 / 15</td><td>Renewal Line Status “Made Dead Since Original Review”</td></tr>
+    <tr><td>5</td><td>Site C</td><td>any</td><td>Yearly</td><td>3</td><td>£100</td><td>2024 / Year 1 / 15</td><td>Status “Superseded”</td></tr>
+  </tbody></table></div>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only, separately for each app’s script. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date check that runs each morning. Set things up as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="rh-open" data-section="rh-open">
+  <div class="sechead"><h2>A. Opening the app</h2><span class="who">Anyone</span></div>
+  <p>The app normally opens inside an Opportunities item. You can also pick any contract from a list, and move between the contract page, the urgency dashboard and the admin pages with the buttons along the top.</p>
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>Open the app on a contract</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Open “TEST – Sam – Riverside Offices contract” on the Opportunities board and choose the Contract Renewal Hub view.</li>
+        <li>Wait for <strong>Loading contract details...</strong> to finish.</li>
+        <li>Look at the buttons along the top and the tabs under the contract header.</li>
+        <li>If the item has no updates, add a short update “TEST – Sam – hello” on the item and reload.</li>
+        <li>On the <strong>Overview</strong> tab click <strong>Activity Timeline</strong>, then click it again.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Buttons <strong>Back to contracts</strong>, <strong>Price increases</strong>, <strong>Settings</strong> and <strong>Renewal urgency dashboard</strong>. The header shows the contract name. Tabs are <strong>Overview</strong> and <strong>Quotes &amp; Invoices</strong> only – there is no <strong>Price Change</strong> tab, because this is not a renewal. Because the Opportunity Type is New Business there is no <strong>Renewal Progress</strong> bar on the Overview. <strong>Activity Timeline</strong> shows “1 update” (or the number of updates); clicking opens a list with the person’s name, how long ago (e.g. “2 minutes ago”) and the update text; clicking again closes it.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>Choose a contract from the list</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Click <strong>Back to contracts</strong>.</li>
+        <li>Read the page, then type “TEST – Sam” into <strong>Search contracts by name</strong>.</li>
+        <li>Replace the search with “zzqq”.</li>
+        <li>Clear the search and click “TEST – Sam – Riverside Offices contract”.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The heading <strong>Choose a contract</strong>, the text “This view normally opens from an Opportunity item. Pick one below to preview it.”, buttons <strong>Renewal urgency</strong>, <strong>Price increases</strong> and <strong>Settings</strong>, and a list headed <strong>Latest 20 contracts</strong> (the 20 most recently updated opportunities). Each row shows the name and “Opportunity Type · Renewal Stage” – or the Deal Stage when there is no Renewal Stage, e.g. “New Business · Won”. The search narrows the list to names containing your text; “zzqq” shows <strong>No contracts match your search.</strong> Clicking a row opens that contract page.</p></article>
+  </div>
+</section>
+
+<section id="rh-admin" data-section="rh-admin">
+  <div class="sechead"><h2>B. Admin settings, quote numbers and price rates</h2><span class="who">Renewal admin, plus one non-admin</span></div>
+  <p>The <strong>Settings</strong> page holds the people and rules used at go-live and by the anomaly check. The <strong>Price increases</strong> page holds the starting quote number and the central price increase rates that renewals are offered on their Price Change tab. Do this section first.</p>
+  <div class="tablewrap"><table><thead><tr><th>Action</th><th>Who can do it</th></tr></thead><tbody>
+    <tr><td>Change Settings, price rates and the starting quote number</td><td>People listed as Renewal admins. Until anyone is listed: the owners of the Opportunities board</td></tr>
+    <tr><td>Override a renewal’s stage</td><td>Renewal admins only (board owners who are not on the list cannot)</td></tr>
+    <tr><td>Everything else (Copy Forward, lines, pricing, QC, go-live)</td><td>Anyone who can open the item</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>Save the renewal settings</h4><span class="tag">Admin</span><span class="role">Renewal admin (board owner the first time)</span></header>
+      <ol>
+        <li>Click <strong>Settings</strong>.</li>
+        <li>Under <strong>People</strong>, in <strong>Renewal admins</strong>, type part of your name in <strong>Search to add people…</strong> and click your name. Make sure you are on the list – if you save without yourself you lose edit access.</li>
+        <li>In <strong>Contracts Manager</strong>, search for and pick a colleague. Pick a second person and watch the first one.</li>
+        <li>In <strong>Finance recipients</strong>, add one or two colleagues.</li>
+        <li>Under <strong>Go-live</strong>, leave <strong>Archive previous contract on go-live</strong> off. In <strong>Confirmation email template</strong> type: “TEST – Dear {{contact}}, your renewal for {{customer}} (PO {{po}}) runs from {{start}} to {{end}}.”</li>
+        <li>Under <strong>Rules</strong>, type 150 in <strong>Visit value tolerance %</strong>, then try −5, then set it to 25.</li>
+        <li>Click <strong>Discard</strong>. Make the changes again and click <strong>Save settings</strong>.</li>
+        <li>Reload the page.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The page headed “Admin” / <strong>Renewal settings</strong> with “Used by stage overrides, go-live notifications, renewal dates and the anomaly check.” Picked people show as chips with an × to remove them; <strong>Contracts Manager</strong> holds only one person (the second pick replaces the first). The tolerance box will not go above 100 or below 0. <strong>Discard</strong> puts back the last saved values; <strong>Discard</strong> and <strong>Save settings</strong> are greyed out until you change something. Saving shows <strong>Settings saved</strong> and the values are still there after reloading. Defaults on a fresh setup: archive off, tolerance 25.</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Non-admins can only view</h4><span class="tag">Two people</span><span class="role">Non-admin</span></header>
+      <ol>
+        <li>Ask a colleague who is not a renewal admin (and not a board owner) to open the app and click <strong>Settings</strong>.</li>
+        <li>They click <strong>Back to contract</strong>, then <strong>Price increases</strong>, and look at the <strong>Quote numbers</strong> box and the rates list.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>On Settings: “View only. Only renewal admins can change settings.” with every field greyed out, people shown as chips without × and no search boxes, and no <strong>Discard</strong> or <strong>Save settings</strong> buttons. On Price increases: “View only. Only renewal admins can change rates.”, no <strong>New increase</strong> button, no pencil or bin icons on rates, and the <strong>Starting quote number</strong> box greyed out with no <strong>Save</strong> button. (Before any renewal admin is set, the wording is “View only. No renewal admins are set yet — only the board owners can change settings and price rates.” and “Until renewal admins are set on the Settings page, only the board owners can change rates.”)</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>Starting quote number</h4><span class="tag">Admin</span><span class="role">Renewal admin</span></header>
+      <ol>
+        <li>Click <strong>Price increases</strong> and find the <strong>Quote numbers</strong> box. Write down the current <strong>Starting quote number</strong>, <strong>Highest on board</strong> and <strong>Next</strong>.</li>
+        <li>Enter 1 and click <strong>Save</strong>.</li>
+        <li>Enter (Highest on board + 1000) and click <strong>Save</strong>.</li>
+        <li>Enter −5 and click <strong>Save</strong>.</li>
+        <li>Put the starting number back to the value you wrote down (agree any permanent value with the Quotes &amp; Orders team) and click <strong>Save</strong>. Write down <strong>Next</strong> – you need it in F3.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The text “Copy Forward gives all renewal lines one new Quote No: the higher of this starting number and the highest existing Quote No, plus 1.” Each save shows <strong>Starting quote number saved</strong> and <strong>Next</strong> updates. Example with Highest on board 40125: starting number 1 gives Next 40126; starting number 41125 gives Next 41126. −5 shows <strong>Enter a whole number</strong> and nothing is saved.</p></article>
+
+    <article class="test" data-id="B4"><header><span class="tid">B4</span><h4>Add, edit and delete a price increase</h4><span class="tag">Admin</span><span class="role">Renewal admin</span></header>
+      <ol>
+        <li>On <strong>Price increases</strong> click <strong>New increase</strong> and click <strong>Save</strong> straight away.</li>
+        <li>Choose Work category Legionella, Percentage 0, click <strong>Save</strong>.</li>
+        <li>Percentage 4.5, Direction Increase, Effective from 2027-01-01, Effective to 2026-12-01, click <strong>Save</strong>.</li>
+        <li>Clear <strong>Effective to (optional)</strong>, Note “TEST – Sam – 2027 uplift”, click <strong>Save</strong>.</li>
+        <li>Click the pencil on the new row, change the percentage to 5, <strong>Save</strong>.</li>
+        <li>Add another: Fire, 3, Increase, from 2025-01-01 to 2025-12-31, note “TEST – Sam – old rate”.</li>
+        <li>Use the <strong>All work categories</strong> filter to pick Legionella, then go back to All work categories.</li>
+        <li>Click the bin on the Fire row, click <strong>Cancel</strong>; click the bin again and confirm.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>A dialog <strong>New price increase</strong> (Effective from defaults to today). Messages in turn: <strong>Choose a work category</strong>, <strong>Enter a percentage above 0</strong>, <strong>"Effective to" must be after "Effective from"</strong>, then <strong>Price increase added</strong>. The row reads “4.5%” with an up arrow, “Legionella”, “2027-01-01 → open-ended · TEST – Sam – 2027 uplift” and status <strong>Scheduled</strong> (starts in the future). Editing shows <strong>Edit price increase</strong> and <strong>Price increase updated</strong>; the row shows 5%. The Fire row shows <strong>Expired</strong> (a rate covering today shows <strong>In effect</strong>). The filter shows only Legionella rates. The delete dialog reads “Delete this price rate?” / “The 3% increase for Fire will be removed. Renewals already priced are not changed.” with <strong>Delete rate</strong>; confirming shows <strong>Removed</strong>. Keep the Legionella 5% rate for I3.</p></article>
+  </div>
+</section>
+
+<section id="rh-dashboard" data-section="rh-dashboard">
+  <div class="sechead"><h2>C. Renewal urgency dashboard</h2><span class="who">Account managers, CS managers</span></div>
+  <p>The dashboard reads the whole Opportunities board and groups opportunities by how far away their Renewal Date is from today. Click a card or count to list the opportunities in that group, soonest first.</p>
+  <div class="tablewrap"><table><thead><tr><th>Group</th><th>Renewal Date</th><th>Count chip</th><th>Card</th></tr></thead><tbody>
+    <tr><td>Overdue</td><td>before today</td><td>Overdue</td><td>Red</td></tr>
+    <tr><td>Due within 30 days</td><td>today to today + 29 days</td><td>&lt; 30 days</td><td>Red</td></tr>
+    <tr><td>Due in 30–90 days</td><td>today + 30 to today + 90 days</td><td>30–90 days</td><td>Amber</td></tr>
+    <tr><td>More than 90 days</td><td>today + 91 days or later</td><td>&gt; 90 days</td><td>Green</td></tr>
+    <tr><td>No renewal date</td><td>empty</td><td>dashed button under the cards</td><td>–</td></tr>
+  </tbody></table></div>
+  <div class="callout">Left out of every count: opportunities whose Frequency is One-off, and superseded contracts – an older contract on the same company that has a later Contract or Repeat opportunity (not Lost), or that has a linked renewal which is Live or Won.</div>
+  <div class="callout warn">Do not link the C1 and C3 test opportunities to a company. If several Contract opportunities share a company, the older ones are treated as superseded and drop out of the counts (that is tested on purpose in C4).</div>
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>Urgency groups and counts</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Click <strong>Renewal urgency dashboard</strong>. Write down the four count chips under the coloured bar and the three card totals.</li>
+        <li>On the Opportunities board create five items with no company, Deal Stage Won and Frequency Contract: “TEST – Sam – Overdue” (Renewal Date 5 days ago), “TEST – Sam – Due 29” (today + 29 days), “TEST – Sam – Due 30” (today + 30), “TEST – Sam – Due 90” (today + 90) and “TEST – Sam – Due 91” (today + 91).</li>
+        <li>Back on the dashboard click <strong>Refresh</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The heading <strong>Renewal urgency</strong> with “Opportunities · as of” today’s date. While refreshing the icon spins and the numbers fade. Afterwards: <strong>Overdue</strong> +1, <strong>&lt; 30 days</strong> +1, <strong>30–90 days</strong> +2, <strong>&gt; 90 days</strong> +1. The <strong>Red</strong> card (“Under 30 days or overdue”) total goes up by 2 and its pill reads “N overdue · N due within 30 days”; <strong>Amber</strong> +2; <strong>Green</strong> +1. Each card lists Deal Stage pills with counts (the Won pills go up by the same amounts). The coloured bar segments are sized in proportion to the counts.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>Lists, Deal Stage filter and opening a contract</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Click the <strong>Red</strong> card, then click it again.</li>
+        <li>Click the <strong>Amber</strong> card, then the <strong>&gt; 90 days</strong> chip.</li>
+        <li>Click the <strong>Won</strong> chip at the top, then <strong>All deal stages</strong>.</li>
+        <li>Open the <strong>&lt; 30 days</strong> list and click the “TEST – Sam – Due 29” row.</li>
+        <li>Go back to the dashboard. On a wide screen click the arrow at the right of a row.</li>
+        <li>If a list has more than 25 rows, click <strong>Load more</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>First click: list <strong>Overdue</strong> with “Most overdue first”; the TEST row shows “5d overdue” in red with the date under it. Second click: <strong>Due within 30 days</strong>, “Soonest renewal first”, “29d left” (a Renewal Date of today shows “Today”). Amber shows <strong>Due in 30–90 days</strong> with Due 30 and Due 90; the chip shows <strong>More than 90 days</strong>. Each row shows the name, company (— when none) · owner, Deal Stage · Renewal Stage, and value (New Contract Value, else Deal Value, else —). The Won filter changes the cards, chips, Superseded count and list to Won only; <strong>All deal stages</strong> puts everything back. Clicking a row opens that contract in the app; the arrow opens the item card in monday. <strong>Load more</strong> adds the next 25. An empty list shows “Nothing here” / “No opportunities match this range and stage.”</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>One-off and undated opportunities</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Create “TEST – Sam – One-off” (no company, Frequency One-off, Renewal Date today + 10) and “TEST – Sam – No date” (no company, Frequency Contract, Renewal Date empty).</li>
+        <li>Click <strong>Refresh</strong> and compare the counts with C1.</li>
+        <li>Click the dashed button “N opportunities have no Renewal Date — review them”.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The text “One-off opportunities and superseded contracts are left out of these counts.” under the cards. The One-off item is not counted (<strong>&lt; 30 days</strong> unchanged) and is in no list. The dashed button’s number goes up by 1; clicking it shows the list <strong>No renewal date</strong> with “Renewal Date is empty”, and the TEST row shows “—” and “No date”.</p></article>
+
+    <article class="test" data-id="C4"><header><span class="tid">C4</span><h4>Superseded contracts are left out</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Create a company “TEST – Sam – Superseded Co”. Create two opportunities linked to it, both Deal Stage Won and Frequency Contract: “TEST – Sam – Old contract” (Project Timeframe 1 Jan 2022 → 31 Dec 2024, Renewal Date 1 Jan 2025) and “TEST – Sam – New contract” (1 Jan 2025 → 31 Dec 2027, Renewal Date 1 Jan 2028).</li>
+        <li>Click <strong>Refresh</strong>, open the Overdue list and look for “Old contract”.</li>
+        <li>Click <strong>Superseded (N)</strong>.</li>
+        <li>Set “New contract” to Deal Stage Lost, click <strong>Refresh</strong> and check the Overdue list again. Then set it back to Won.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“Old contract” is not in the Overdue list or counts, and <strong>Superseded (N)</strong> has gone up by 1. Clicking it highlights the button and lists <strong>Superseded contracts</strong> – “Replaced by a later Contract/Repeat opportunity, or by a Live/Won renewal — not counted above” – including “Old contract”. Clicking any card or chip turns the superseded list off. With “New contract” Lost, “Old contract” is back in Overdue and the Superseded count drops by 1.</p></article>
+  </div>
+</section>
+
+<section id="rh-header" data-section="rh-header">
+  <div class="sechead"><h2>D. Contract header, warnings and company link</h2><span class="who">Account managers</span></div>
+  <p>The header shows the contract’s key dates and values, a countdown to the Renewal Date, a red <strong>Data Quality Issues</strong> box when something is missing, and lets you link the company.</p>
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>Header details and renewal countdown</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Open the main contract “TEST – Sam – Riverside Offices contract” in the app. Read the header and hover over the countdown badge.</li>
+        <li>Open “TEST – Sam – Due 91”, “Due 90”, “Due 29”, “Overdue” and “No date” from C1/C3 and read each badge.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Riverside: the name, a “New Business” badge, “Not Started” (Renewal Stage is empty) and a badge “N days to renewal” counting to 1 Jan 2027 – amber when 30–90 days away, red when under 30. Hovering shows e.g. “Renewal Date: 1 Jan 2027 · 30–90 days away”. Details: Customer = TEST company; Contact = contact name and email; Owner; CS Manager; <strong>Contract dates (Project Timeframe)</strong> “1 Jan 2024 → 31 Dec 2026” with a “3 years” chip; Contract Period “3 years”; Anniversary Date and Renewal Date as on the board; Deal Value “£5,100”; Previous Contract Value “—”; New Contract Value “—”. A <strong>Copy Forward</strong> button at the top right. Badges: Due 91 green “91 days to renewal”; Due 90 amber “90 days to renewal”; Due 29 red “29 days to renewal”; Overdue red “Renewal overdue by 5 days”; No date grey “No renewal date” with the hint “Set the contract dates to calculate the renewal date.” (Numbers drop by one each day after C1.)</p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>Data Quality Issues warnings</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Open “TEST – Sam – Overdue” and read the red box.</li>
+        <li>Open “TEST – Sam – Harbour House contract” and read the red box and the Customer field.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Overdue: <strong>Data Quality Issues</strong> listing “No contract dates — set the contract start and end dates. Renewal date, anniversary, visit years and contract value are all calculated from the contract dates.”, “No account linked — neither this opportunity nor its contact is linked to an account. Link one below so sites, the Account Manager and notifications work.”, “No contact linked — link a contact to this opportunity in monday.” and “Renewal date is in the past”. The Customer field shows a <strong>Link account</strong> button and the contract dates box is red with <strong>Set contract dates</strong>. (An amber Copy Forward panel also shows – that is section E.) Harbour House: only the contract dates warning; Customer shows the TEST company with “Found through the contact” and a <strong>Save to this item</strong> button. “Renewal date is in the past” is never shown once the Renewal Stage is Live or Reported.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Save the company to the opportunity</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On Harbour House click <strong>Save to this item</strong>.</li>
+        <li>Type “zzqq” into <strong>Search accounts</strong>, then replace it with “TEST – Sam”.</li>
+        <li>Click “TEST – Sam – Riverside Offices Ltd”.</li>
+        <li>Reload and check the item on the board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>A search box with “First 20 matches”; “zzqq” shows <strong>No accounts found.</strong>; matches show the company name and “N sites”. Choosing shows <strong>Linked to TEST – Sam – Riverside Offices Ltd</strong>; “Found through the contact” and the button disappear. On the board, Harbour House’s company column now holds the TEST company. (The same picker, labelled <strong>Link account</strong>, appears when no company can be found at all; a failure shows <strong>Could not link the account</strong>.) This matters because Copy Forward, the anomaly check and go-live use only the opportunity’s own company.</p></article>
+  </div>
+</section>
+
+<section id="rh-eligibility" data-section="rh-eligibility">
+  <div class="sechead"><h2>E. When Copy Forward is available, and contract dates</h2><span class="who">Account managers</span></div>
+  <p><strong>Copy Forward</strong> appears only when Deal Stage is Won, the opportunity or at least one active quote line (not Superseded or Declined) has Frequency Contract or Repeat, and the contract dates are valid. Otherwise an amber panel under the header says what to change. All renewal dates come from Project Timeframe: Contract Period = whole years from start to (end + 1 day); Anniversary Date = start + 1 year; Renewal Date = end + 1 day.</p>
+  <div class="tablewrap"><table><thead><tr><th>Contract start</th><th>Contract end</th><th>Contract Period</th><th>Anniversary Date</th><th>Renewal Date</th></tr></thead><tbody>
+    <tr><td>1 Jan 2024</td><td>31 Dec 2026</td><td>3 years</td><td>1 Jan 2025</td><td>1 Jan 2027</td></tr>
+    <tr><td>1 Mar 2024</td><td>28 Feb 2026</td><td>2 years</td><td>1 Mar 2025</td><td>1 Mar 2026</td></tr>
+    <tr><td>29 Feb 2024</td><td>28 Feb 2025</td><td>1 year</td><td>28 Feb 2025</td><td>1 Mar 2025</td></tr>
+    <tr><td>1 Jan 2024</td><td>30 Dec 2026</td><td>2 years (date chip shows “2 yr 11 mo”)</td><td>1 Jan 2025</td><td>31 Dec 2026</td></tr>
+    <tr><td>1 Jan 2024</td><td>30 Jun 2024</td><td colspan="3">Not allowed – under 1 year</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>“Copy Forward isn’t available yet”</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Open Harbour House (Deal Stage not Won) and read the amber panel under the header.</li>
+        <li>On the board set Harbour House’s Deal Stage to Won. Reload.</li>
+        <li>On the Quotes &amp; Invoices board set Harbour House’s line Frequency from One-off to Contract. Reload.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: amber panel <strong>Copy Forward isn't available yet</strong> with “Deal Stage is [your stage]. Set Deal Stage to Won to create the renewal.” and no Copy Forward button. Step 2: “Neither the opportunity nor any active quote line is a Contract or Repeat. Set Frequency to Contract or Repeat on the opportunity or on its quote lines to create the renewal.” Step 3: the panel changes to <strong>Set the contract dates to create the renewal</strong> (next test). Setting Frequency on the opportunity itself has the same effect; a line with Status Superseded or Declined does not count.</p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Set the contract dates – prefill and checks</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On Harbour House read the amber panel and the two date boxes.</li>
+        <li>Clear <strong>Contract end</strong> and click <strong>Save dates</strong>.</li>
+        <li>Set Contract end to 01/06/2023 and click <strong>Save dates</strong>.</li>
+        <li>Set Contract end to 30/06/2024 and click <strong>Save dates</strong>.</li>
+        <li>On the board clear Harbour House’s Order Date (and Closed Date, if set). Reload and read the panel. Then put Order Date back to 1 Jan 2024 and reload.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong><strong>Set the contract dates to create the renewal</strong> with “No contract dates — set the contract start and end dates. These save to Project Timeframe.” <strong>Contract start</strong> is prefilled 01/01/2024 (the Order Date) and <strong>Contract end</strong> 31/12/2026 (start + the line’s Contract Period (Years) of 3 − 1 day). Messages: “Enter both a start and an end date.”, “The end date must be after the start date.”, then “Contract term is under 1 year — the end date must be at least a year after the start.” Nothing is saved – Project Timeframe stays empty. With no Order Date or Closed Date both boxes are empty and the panel says “No Order Date or Closed Date to prefill from.” (If only Closed Date is set, it is used as the start.)</p></article>
+
+    <article class="test" data-id="E3"><header><span class="tid">E3</span><h4>Save dates – anniversary and renewal date maths</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On Harbour House make sure the boxes read 01/01/2024 and 31/12/2026 and click <strong>Save dates</strong>.</li>
+        <li>Read the header, then check the item on the board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The amber panel disappears and the <strong>Copy Forward</strong> button appears. Contract dates “1 Jan 2024 → 31 Dec 2026” with “3 years”; Contract Period “3 years”; Anniversary Date “1 Jan 2025”; Renewal Date “1 Jan 2027”; the contract dates warning is gone. On the board: Project Timeframe 1 Jan 2024 – 31 Dec 2026, Anniversary Date 1 Jan 2025, Renewal Date 1 Jan 2027. Any other dates you try should match the rules in the table above.</p></article>
+  </div>
+</section>
+
+<section id="rh-copy" data-section="rh-copy">
+  <div class="sechead"><h2>F. Copy Forward – creating the renewal</h2><span class="who">Account managers</span></div>
+  <p>Copy Forward creates one renewal opportunity linked to the old contract, starting the day after the old contract ends and running for the same number of years, and copies every active line onto it in batches. It never creates a second renewal for the same contract.</p>
+  <div class="tablewrap"><table><thead><tr><th>Board</th><th>Item</th><th>What Copy Forward writes</th></tr></thead><tbody>
+    <tr><td>Opportunities</td><td>New renewal</td><td>Name “[old name] — Renewal [start year]”, Opportunity Type Renewal, Parent Opportunity, company, Contacts, Owner, CS Manager, Project Timeframe, Frequency (Contract/Repeat), Anniversary Date, Renewal Date, Previous Contract End, Renewal Stage In Progress, Previous Contract Value (old New Contract Value, else old Deal Value), plus a progress update</td></tr>
+    <tr><td>Opportunities</td><td>Old contract</td><td>Frequency – only if it was empty (Contract if any line is Contract, otherwise Repeat). Nothing else.</td></tr>
+    <tr><td>Quotes &amp; Invoices</td><td>One new line per active old line</td><td>Same details and price, plus a new Quote No (same on every line), Status Working on it, Renewal Line Status Existing, Previous Quote ID, Previous Selling Price, First Visit years moved on, Planned Work Checked</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>Create the renewal</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Open the main contract “TEST – Sam – Riverside Offices contract”.</li>
+        <li>Click <strong>Copy Forward</strong>, read the dialog and click <strong>Cancel</strong>.</li>
+        <li>Click <strong>Copy Forward</strong> again and click <strong>Create Renewal</strong>. Wait.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>A dialog <strong>Create Renewal?</strong> – “This creates one renewal for TEST – Sam – Riverside Offices Ltd and copies every active line. Large contracts can take a minute — progress is posted as an update on the renewal.” <strong>Cancel</strong> creates nothing. After <strong>Create Renewal</strong> the button reads <strong>Copying lines…</strong>, a pop-up says <strong>Copying contract lines… this can take a while on large contracts</strong>, then <strong>Renewal created — 3 line(s) copied</strong>, and the renewal opens (as an item card in monday – pick the Contract Renewal Hub view; if you had opened Riverside from the Choose a contract list, the app switches straight to the renewal). One new item is on the Opportunities board.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>The renewal opportunity</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the renewal, read the header and tabs.</li>
+        <li>Open the renewal item on the Opportunities board and check its columns.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Name “TEST – Sam – Riverside Offices contract — Renewal 2027”, a “Renewal” badge, “In Progress”, a green countdown to 1 Jan 2030. Contract dates “1 Jan 2027 → 31 Dec 2029” with “3 years”; Anniversary Date “1 Jan 2028”; Renewal Date “1 Jan 2030”; Deal Value “—”; Previous Contract Value “£5,100”; New Contract Value “—”. Tabs <strong>Overview</strong>, <strong>Quotes &amp; Invoices</strong> and <strong>Price Change</strong>. An amber panel “Copy Forward isn't available yet” / “Deal Stage is blank. Set Deal Stage to Won to create the renewal.” – this is normal on a renewal until it goes live (M4). On the board: Opportunity Type Renewal; Parent Opportunity = Riverside; company, Contacts, Owner and CS Manager as on Riverside; Frequency Contract; Project Timeframe 1 Jan 2027 – 31 Dec 2029; Anniversary Date 1 Jan 2028; Renewal Date 1 Jan 2030; Previous Contract End 31 Dec 2026; Renewal Stage In Progress; Previous Contract Value 5,100; Deal Stage empty.</p></article>
+
+    <article class="test" data-id="F3"><header><span class="tid">F3</span><h4>The copied quote lines</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Quotes &amp; Invoices board, filter 🔗Opportunity to the renewal (or open the renewal’s 🔗Related Quotes).</li>
+        <li>Compare each new line with its original line.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Exactly 3 new lines (copies of Lines 1–3). Line 4 (Made Dead Since Original Review) and Line 5 (Superseded) are not copied. Each new line has: the same name; Quote No = the <strong>Next</strong> number from B3, the same on all three; Status Working on it; 🔗Opportunity = the renewal; the same Sites, Work Type(s), Work Category, Frequency, Visit Frequency, Number of Visits, Actual Selling Price, Assigned Consultant and First Visit — Week Number (2, 10, 20); First Visit — Calendar Year 2027 (Lines 1–2: 2024 + the 3-year period; Line 3 was blank, so it gets the renewal’s start year 2027 for Year 1); First Visit — Contract Year Year 1; Renewal Line Status Existing; Previous Quote ID = the original line’s item ID; Previous Selling Price £250, £400 and £600; Planned Work Checked “Not Checked” on Line 2 (Workplace Environmental Assessment) and “N/A” on Lines 1 and 3.</p></article>
+
+    <article class="test" data-id="F4"><header><span class="tid">F4</span><h4>Progress update on the renewal</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the renewal’s <strong>Overview</strong> tab, open <strong>Activity Timeline</strong>.</li>
+        <li>Also open the renewal’s Updates in monday.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>An update by you: “Copy Forward progress — initial copy”, “3 of 3 lines copied.”, then one row per line “✅ [line name] (source [original item ID])”, then “First Visit filled in on 1 line(s) (blank on the previous contract):” and “• [Line 3 name] (source [ID]): Calendar Year → 2027”. There is no “Dates” section (Riverside’s Renewal Date was the day after it ended) and no “Copy Forward incomplete” update.</p></article>
+
+    <article class="test" data-id="F5"><header><span class="tid">F5</span><h4>The old contract after Copy Forward</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Open Riverside in the app and look at the top right of the header.</li>
+        <li>Click <strong>Open renewal</strong>.</li>
+        <li>On the boards, check Riverside’s own columns and its five lines, and search Opportunities for items whose Parent Opportunity is Riverside.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“Renewal created” with an <strong>Open renewal</strong> button instead of Copy Forward; the button opens the renewal. Riverside’s lines are unchanged (prices, Status, Renewal Line Status) and so are its Renewal Stage, Deal Stage and dates. Only one renewal has Parent Opportunity = Riverside. (If Copy Forward is ever triggered from an out-of-date screen, you get <strong>A renewal already exists — opening it</strong> and no second renewal.)</p></article>
+
+    <article class="test" data-id="F6"><header><span class="tid">F6</span><h4>Empty Frequency and a mismatched Renewal Date</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the board set Harbour House’s Renewal Date to 15 Jan 2027 (its own Frequency is still empty). Reload.</li>
+        <li>Click <strong>Copy Forward</strong> → <strong>Create Renewal</strong>.</li>
+        <li>Check Harbour House’s Frequency, then the new renewal and its progress update.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Copy Forward is offered (the line is Contract). Afterwards Harbour House’s Frequency is Contract. The renewal “TEST – Sam – Harbour House contract — Renewal 2027” runs 1 Jan 2027 → 31 Dec 2029 (the day after the old contract ended, not 15 Jan) with Renewal Date 1 Jan 2030 and Frequency Contract. Its progress update ends with a <strong>Dates</strong> section: “Previous Renewal Date was 15 Jan 2027, not the day after the previous contract ended (1 Jan 2027). The renewal starts on 1 Jan 2027.” Its line has a new Quote No, one higher than the Riverside renewal’s (unless other quotes were numbered in between).</p></article>
+
+    <article class="test" data-id="F7"><header><span class="tid">F7</span><h4>Partial copy and “Retry failed lines”</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>This cannot be forced. Run it only if a Copy Forward pop-up ever says “Copied X of Y lines. Use Retry failed lines to copy the rest.” Otherwise mark it “Not seen”.</li>
+        <li>Stay on that screen – the retry button is only offered there. Read the header and the renewal’s updates.</li>
+        <li>Click <strong>Retry failed lines</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>In red: “Copied X of Y lines. Retry to copy the rest.” with <strong>Open renewal</strong> and <strong>Retry failed lines</strong>. The renewal’s Renewal Stage is Not Started; its updates show “Copy Forward progress — initial copy” with ❌ rows and the reason, and “⚠️ Copy Forward incomplete — N line(s) failed … Renewal Stage set to Not Started. Use "Retry failed lines" to copy these:” with the list. Retrying shows <strong>Retrying…</strong>, then <strong>All Y lines copied</strong> and opens the renewal. Only the missing lines are copied (no duplicates), with the same Quote No as the others; Renewal Stage goes back to In Progress; a “Copy Forward progress — retry” update is added. If lines still fail, the same red message returns.</p></article>
+  </div>
+</section>
+
+<section id="rh-dates" data-section="rh-dates">
+  <div class="sechead"><h2>G. Changing dates on a renewal</h2><span class="who">Account managers</span></div>
+  <p>On a renewal that is not yet Live or Reported, saving new contract dates also recalculates the Anniversary Date, Renewal Date and New Contract Value. New Contract Value = for each active line, price × visits per year × contract years (one-off lines: price × quantity).</p>
+  <div class="tests">
+    <article class="test" data-id="G1"><header><span class="tid">G1</span><h4>Change the renewal’s contract length</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Riverside renewal click the <strong>Contract dates (Project Timeframe)</strong> box. Read the pop-up.</li>
+        <li>Click <strong>2 yr</strong>, then <strong>Save dates</strong>. Read the header; check the item on the board.</li>
+        <li>Open the box again, click <strong>3 yr</strong>, <strong>Save dates</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>A pop-up with <strong>Contract length</strong> buttons 1 yr, 2 yr, 3 yr, 5 yr (3 yr highlighted), a two-month calendar, “1 Jan 2027 → 31 Dec 2029 (3 years)”, <strong>Cancel</strong>, <strong>Save dates</strong> (greyed until you change something) and “Saving recalculates the renewal date, anniversary date, line visit schedules and contract value.” After 2 yr: “1 Jan 2027 → 31 Dec 2028 (2 years)”; pop-ups <strong>Anniversary and renewal dates recalculated</strong> and <strong>Updated successfully</strong>; Contract Period “2 years”; Anniversary Date “1 Jan 2028”; Renewal Date “1 Jan 2029”; New Contract Value “£3,400” (£250 × 4 × 2 = £2,000 + £400 × 1 × 2 = £800 + £600 × 0.5 × 2 = £600). The board shows the same Project Timeframe, Anniversary Date, Renewal Date and New Contract Value. After 3 yr: end 31 Dec 2029, Renewal Date 1 Jan 2030, New Contract Value “£5,100” (£3,000 + £1,200 + £900).</p></article>
+
+    <article class="test" data-id="G2"><header><span class="tid">G2</span><h4>A term under one year is saved but not used</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Open the dates box on the Riverside renewal. In the calendar select 1 Jan 2027 as the start and 30 Jun 2027 as the end. Click <strong>Save dates</strong>.</li>
+        <li>Read the header and the red box.</li>
+        <li>Open the box, click <strong>3 yr</strong> and <strong>Save dates</strong> to put it back.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“(6 mo)” next to the dates before saving. Pop-ups “Dates saved, but not recalculated: Contract term is under 1 year — the end date must be at least a year after the start.” and <strong>Updated successfully</strong>. The header shows “1 Jan 2027 → 30 Jun 2027” with “6 mo”, Contract Period “—”, and the Anniversary Date (1 Jan 2028) and Renewal Date (1 Jan 2030) unchanged. <strong>Data Quality Issues</strong> shows “Contract term is under 1 year — the end date must be at least a year after the start. Renewal date, anniversary, visit years and contract value are all calculated from the contract dates.” After step 3 the warning is gone.</p></article>
+  </div>
+</section>
+
+<section id="rh-lines" data-section="rh-lines">
+  <div class="sechead"><h2>H. Renewal lines (Quotes &amp; Invoices tab)</h2><span class="who">Account managers, consultants</span></div>
+  <p>The Quotes &amp; Invoices tab lists every line linked to the opportunity, including removed ones (Superseded lines are never shown). On a renewal you can add lines, mark lines dead and restore them. Line prices are changed in bulk on the Price Change tab (section I).</p>
+  <div class="tablewrap"><table><thead><tr><th>Visits / yr shows</th><th>When</th><th>Annual value</th><th>Contract value</th></tr></thead><tbody>
+    <tr><td>4/yr (grey: Visit Frequency: Quarterly)</td><td>Visit Frequency set (or Frequency Unit + Measure, e.g. “Every 3 Months”)</td><td>price × visits per year</td><td>price × visits per year × contract years</td></tr>
+    <tr><td>Every 2 years</td><td>2-Yearly</td><td>the price</td><td>price × 0.5 × contract years</td></tr>
+    <tr><td>2 once</td><td>Frequency One-off, One-Off Quantity 2</td><td>price × quantity</td><td>price × quantity</td></tr>
+    <tr><td>— (Frequency not set)</td><td>nothing set</td><td>—</td><td>—</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="H1"><header><span class="tid">H1</span><h4>Line values on the Quotes &amp; Invoices tab</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Riverside renewal open the <strong>Quotes &amp; Invoices</strong> tab and read the three lines.</li>
+        <li>Open Riverside (the old contract) and look at the same tab.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Columns Site, Work, Line status, Visits / yr, Previous price, Price per visit, Annual value, Contract value, Planned work, Consultant, plus a button column. Line 1: Site A with “TST-A · [address]”; the Legionella product with “Legionella” under it; Existing; “4/yr” with “Visit Frequency: Quarterly”; £250.00; £250.00; £1,000.00; £3,000.00; N/A; you; <strong>Mark dead</strong>. Line 2: “1/yr”; £400.00; £400.00; £400.00; £1,200.00; a <strong>Not Checked</strong> button under Planned work. Line 3: “Every 2 years” with “Visit Frequency: 2-Yearly”; £600.00; £600.00; £600.00; £900.00 (£600 × 0.5 × 3). The Contract value column adds up to £5,100, the New Contract Value in the header. On Riverside (not a renewal) there is no <strong>Add Line</strong>, no <strong>Mark dead</strong> and no Renewal document box.</p></article>
+
+    <article class="test" data-id="H2"><header><span class="tid">H2</span><h4>Add Line – site search and visit numbers</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the renewal’s Quotes &amp; Invoices tab click <strong>Add Line</strong> and read the dialog.</li>
+        <li>Click <strong>Select site...</strong>; type “TST-C”, then replace it with Site C’s town or postcode. Pick Site C.</li>
+        <li>Click <strong>Select product or service…</strong>, search “Legionella” and pick one; then pick a Workplace Environmental Assessment product; then pick any other non-WEA product.</li>
+        <li>Change <strong>Visit Frequency</strong> to Quarterly, then 2-Yearly, then None, then Yearly, watching <strong>Number of Visits (total over contract)</strong>.</li>
+        <li>Type 5 in Number of Visits, then click <strong>Recalculate</strong>.</li>
+        <li>Look at the First Visit fields, then click <strong>Cancel</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong><strong>Add Quote Line</strong> – “Add a new line item to this renewal. Assigned Consultant is set from the renewal's Owner.” The site list shows “Showing 3 sites from the Sites board”; searching matches site name, Site Code, town or postcode; each site shows its name and “TST-C · [town, postcode]”. Products show name and code/category; picking shows “Work Category: Legionella”; a WEA product shows “Work Category: Workplace Environmental Assessment · Planned work starts as Not Checked”. Number of Visits: Yearly 3, Quarterly 12, 2-Yearly 2 (0.5 × 3 = 1.5, rounded up), None 0, with “Visits per year × 3 contract years, rounded up.” After typing: “Edited by hand. Recalculate”; Recalculate restores the worked-out number. <strong>First Visit — Calendar Year</strong> is 2027 and <strong>First Visit — Contract Year</strong> is Year 1 (choices Year 1–5). Cancel creates nothing.</p></article>
+
+    <article class="test" data-id="H3"><header><span class="tid">H3</span><h4>Add Line – required fields</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Click <strong>Add Line</strong>, clear First Visit — Calendar Year and click <strong>Add Line</strong> in the dialog.</li>
+        <li>Enter 1999 and click <strong>Add Line</strong>.</li>
+        <li>Enter 2027, leave the site empty, click <strong>Add Line</strong>.</li>
+        <li>Pick a site and a product but leave <strong>Actual Selling Price</strong> empty; click <strong>Add Line</strong>. Then <strong>Cancel</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Steps 1–2: “Enter First Visit — Calendar Year (a year between 2000 and 2100)”. Steps 3–4: “Fill in site, product or service, visits and price”. No line is created.</p></article>
+
+    <article class="test" data-id="H4"><header><span class="tid">H4</span><h4>Add a new line</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Click <strong>Add Line</strong>: Site C, a non-WEA product, Visit Frequency Yearly (Number of Visits 3), First Visit 2027 / Year 1, Actual Selling Price 300. Click <strong>Add Line</strong>.</li>
+        <li>Read the table and the header’s New Contract Value.</li>
+        <li>Check the new line on the Quotes &amp; Invoices board and the renewal’s Anomaly Check Status.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong><strong>Adding...</strong>, then <strong>Quote line added. Re-run the anomaly check</strong>, and the dialog closes. New row: Site C, Line status “New”, Previous price —, £300.00, Annual value £300.00, Contract value £900.00, Consultant = the renewal’s Owner (you). The header’s New Contract Value stays £5,100 for now – it is recalculated when a price change is applied (I2) or dates are saved. On the board: name “[Site C name] - [product name]”, Type Quote, 🔗Opportunity = renewal, Sites = Site C, Work Type(s), Work Category, Number of Visits 3, Visit Frequency Yearly, Actual Selling Price 300, Renewal Line Status New, Planned Work Checked N/A, First Visit — Calendar Year 2027, First Visit — Contract Year Year 1, Assigned Consultant you. First Visit — Week Number is empty (the dialog has no box for it – you fill it in M1). On the renewal, Anomaly Check Status = Not Run.</p></article>
+
+    <article class="test" data-id="H5"><header><span class="tid">H5</span><h4>Mark a line dead and restore it</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the line you added click <strong>Mark dead</strong>, then <strong>Cancel</strong>.</li>
+        <li>Click <strong>Mark dead</strong> again and confirm. Check the row and the board.</li>
+        <li>Click <strong>Restore</strong>.</li>
+        <li>Repeat steps 2–3 on Line 3 (a copied line).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>A dialog “Mark this line dead?” – “"[line name]" will be marked Removed and left out of checks, pricing and totals. You can restore it later.” with <strong>Cancel</strong> and a red <strong>Mark dead</strong>. Confirming shows <strong>Line removed. Re-run the anomaly check</strong>; the row fades, Line status reads “Removed” and the button becomes <strong>Restore</strong>; on the board Renewal Line Status is “Made Dead Since Original Review” (the line is not deleted). Restore shows <strong>Line restored. Re-run the anomaly check</strong>: your added line goes back to “New”, Line 3 back to “Existing” (it has a Previous Quote ID). Each action sets Anomaly Check Status to Not Run. The header’s New Contract Value does not change with these actions.</p></article>
+  </div>
+</section>
+
+<section id="rh-pricing" data-section="rh-pricing">
+  <div class="sechead"><h2>I. Price Change tab and contract value</h2><span class="who">Account managers</span></div>
+  <p>The Price Change tab (renewals only) compares the previous and new contract values and lets you raise or lower Actual Selling Price on every active line – or one work category – in one go. Each change is saved as a snapshot so the last one can be undone. Removed lines and lines with no price are never changed.</p>
+  <div class="tests">
+    <article class="test" data-id="I1"><header><span class="tid">I1</span><h4>Contract Value box</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Riverside renewal open <strong>Price Change</strong> and read <strong>Contract Value</strong>.</li>
+        <li>Open the Harbour House renewal and do the same.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Riverside renewal: <strong>Previous Value</strong> £5,100; <strong>New Value</strong> £5,100 (from G1 – the line added in H4 is not in it yet); <strong>Difference</strong> “+£0 (+0.0%)”. Difference = New − Previous; the percentage is Difference ÷ Previous, to one decimal place; it shows green with an up arrow when 0 or more, red with “−” and a down arrow when lower. Harbour House renewal: New Value “—” and Difference “—” – no difference is shown when either value is missing.</p></article>
+
+    <article class="test" data-id="I2"><header><span class="tid">I2</span><h4>Apply a price increase to all services</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Riverside renewal’s Price Change tab, under <strong>Apply Price Change</strong>, note <strong>History (0)</strong> and that <strong>Undo Last Change</strong> is greyed out.</li>
+        <li>Type −2 in <strong>Price Change %</strong> and click <strong>Apply Price Change</strong>.</li>
+        <li>Type 4, Direction Increase, leave <strong>All Services</strong> ticked (the other categories are greyed). Click <strong>Apply Price Change</strong>, read the dialog, click <strong>Apply Change</strong>.</li>
+        <li>Click <strong>History (1)</strong>. Open the Quotes &amp; Invoices tab. Check the boards.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>−2 gives “Please enter a valid percentage”. Dialog <strong>Apply Price Change?</strong> – “This will increase prices by 4% for All Services. A snapshot will be saved so you can undo this change later.” Then <strong>Applying...</strong> and “Price change applied to 4 lines. Re-run the anomaly check”. Prices per visit: £260.00, £416.00, £624.00 and £312.00 (Previous price unchanged). New Value £6,240 = £260 × 4 × 3 (£3,120) + £416 × 1 × 3 (£1,248) + £624 × 0.5 × 3 (£936) + £312 × 1 × 3 (£936). Difference “+£1,140 (+22.4%)”; the header’s New Contract Value is £6,240. <strong>Price Change History</strong>: “4% Increase, All Services” and “[date] by [you] • 4 lines affected”. The form resets. Boards: Actual Selling Price updated on the 4 lines (to the penny); on the renewal New Contract Value 6240, Price Change 4, Price Change Direction Increase, Price Change Scope = the All Services label, Pricing Snapshot filled in, Anomaly Check Status Not Run.</p></article>
+
+    <article class="test" data-id="I3"><header><span class="tid">I3</span><h4>Use a suggested rate for one work category</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Read the <strong>Suggested increases</strong> box.</li>
+        <li>Click <strong>Use</strong> on Legionella and read the form.</li>
+        <li>Click <strong>Apply Price Change</strong> → <strong>Apply Change</strong>.</li>
+        <li>Click <strong>Manage rates</strong>, then come back.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“Central rates in effect on 2027-01-01 (contract start).” with Legionella “Increase 5%” from B4 (one rate per category; expired and later rates are not listed; with none: “No central rates cover this date.”). <strong>Use</strong> shows “Filled increase 5% for Legionella. Review, then apply.” and sets 5, Increase, and only Legionella ticked. After applying: “Price change applied to 1 line. Re-run the anomaly check”; Line 1 becomes £273.00 (£260 × 1.05); the others are unchanged; New Value £6,396 (£273 × 4 × 3 = £3,276 + £1,248 + £936 + £936); Difference “+£1,296 (+25.4%)”; <strong>History (2)</strong>; Price Change Scope on the board = Legionella. <strong>Manage rates</strong> opens the Price increases page.</p></article>
+
+    <article class="test" data-id="I4"><header><span class="tid">I4</span><h4>Undo the last price change</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Click <strong>Undo Last Change</strong>, then <strong>Cancel</strong>.</li>
+        <li>Click <strong>Undo Last Change</strong> again and <strong>Undo change</strong>.</li>
+        <li>Check prices, History and the board. Do not undo a second time – later tests need the 4% prices.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Dialog “Undo the last price change?” – “Every line changed by the most recent price change goes back to its previous price, and the contract value is recalculated.” Then “Restored 1 line to previous prices. Re-run the anomaly check”. Line 1 is back to £260.00, the others unchanged; New Value £6,240; <strong>History (1)</strong>. On the board Price Change 4, Direction Increase and Scope All Services are back, and Anomaly Check Status is Not Run. Each undo removes only the latest change.</p></article>
+  </div>
+</section>
+
+<section id="rh-document" data-section="rh-document">
+  <div class="sechead"><h2>J. Renewal document</h2><span class="who">Account managers</span></div>
+  <p>On a renewal’s Quotes &amp; Invoices tab the app builds the renewal proposal as a Word document and a PDF from the live board data: cover letter, programme schedule with every planned visit, technical specifications and terms. The files download to your computer; nothing is saved to the board or sent.</p>
+  <div class="callout">Programme schedule rules: visits = visits per year × contract years, rounded up (one-off: the quantity), shown as “1 of X”, “2 of X”…; the first planned start is the Monday (“w/c”) of the line’s First Visit — Week Number in its First Visit — Calendar Year; later visits follow every 52 ÷ visits-per-year weeks (13 quarterly, 26 six-monthly, 52 yearly, 104 two-yearly). No week number gives “To be agreed”.</div>
+  <div class="tests">
+    <article class="test" data-id="J1"><header><span class="tid">J1</span><h4>Generate the document and check the cover letter</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Riverside renewal’s Quotes &amp; Invoices tab find <strong>Renewal document</strong> and click <strong>Generate renewal document</strong>.</li>
+        <li>Click <strong>Word</strong> and <strong>PDF</strong> and open both files.</li>
+        <li>Read page 1 of each.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The box text “Cover letter, programme schedule with every planned visit, technical specifications and terms.” After a spinner, <strong>Word</strong> and <strong>PDF</strong> buttons appear and the main button becomes <strong>Regenerate</strong>. Files are named “Renewal-[Quote No].docx” and “.pdf”. Page 1: the Assurity Consulting logo top right (on every page; if the logo can’t load, the words “Assurity Consulting” in green); “Private &amp; Confidential” on the left and “Ref: [Quote No]” on the right; the contact’s first and last name; “TEST – Sam – Riverside Offices Ltd”; today’s date in full (e.g. “10 November 2026”) on the right; “Dear [contact first name]” (“Dear Sir or Madam” with no contact); bold “Contract renewal”; “Thank you for your continued business. We are pleased to provide our renewal proposal for TEST – Sam – Riverside Offices Ltd, covering the sites and services set out below.” and two more paragraphs; “Yours sincerely” and the Owner’s name. Page 1 only has the footer “Assurity Consulting Limited” (orange) with green lines “26 Redkiln Way Horsham West Sussex RH13 5QH”, “t +44 (0)1403 269375 e info@assurityconsulting.co.uk”, “w assurityconsulting.co.uk”, “Registered in England and Wales Reg. No. 2227268”, “Corporate Member of IWFM”. The Word file uses Verdana.</p></article>
+
+    <article class="test" data-id="J2"><header><span class="tid">J2</span><h4>Programme schedule</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Go to page 2 of the PDF (and the Word file).</li>
+        <li>Check each site block against the expected result. Line order within a site may differ.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Green heading “Programme Schedule” with a line under it and “Programme duration: 3 years (1 January 2027 to 31 December 2029)”. One block per site starting “Location: TEST – Sam – Riverside Site A (TST-A), [address]”, then a table Work type | Visits | Planned start date | Visit frequency | Fee per visit (work type and frequency only on each line’s first row). Site A – Line 1: “1 of 12” w/c 11 Jan 2027, “2 of 12” w/c 12 Apr 2027, “3 of 12” w/c 12 Jul 2027, “4 of 12” w/c 11 Oct 2027, “5 of 12” w/c 10 Jan 2028 … “12 of 12”, Quarterly, £260.00; Line 3: “1 of 2” w/c 17 May 2027, “2 of 2” w/c 14 May 2029, “Every 2 years”, £624.00; “Invoicing details: Invoiced after each visit is completed.”; “Total programme value for this site: £4,368.00 excluding VAT” (£260 × 12 + £624 × 2). Site B: “1 of 3” w/c 8 Mar 2027, “2 of 3” w/c 6 Mar 2028, “3 of 3” w/c 5 Mar 2029, Yearly, £416.00; site total £1,248.00. Site C: your added line, 3 rows “To be agreed”, £312.00; site total £936.00. Finally “Total programme value: £6,552.00 excluding VAT”.</p></article>
+
+    <article class="test" data-id="J3"><header><span class="tid">J3</span><h4>Specifications, terms and what is left out</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Read pages 3 and 4.</li>
+        <li>Mark your added line dead (as in H5), click <strong>Regenerate</strong> and download the PDF again. Then <strong>Restore</strong> the line.</li>
+        <li>On the Harbour House renewal mark its only line dead, click <strong>Generate renewal document</strong>, then restore the line.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Page 3 “Technical Specifications”: each work type name in bold followed by its description from the Products &amp; Services board, or “Specification available on request.” Page 4 “Terms &amp; Conditions”: Payment terms (“Payment is due within 30 days of invoice date unless otherwise agreed.”), Cancellation (“Cancellations must be made at least 48 hours in advance to avoid charges.”), Liability and Validity (“This quotation is valid for 30 days from the date of issue…”). With the added line removed, the Site C block disappears and the total becomes £5,616.00 (lines with Status Declined are also left out). Harbour House with no active lines shows in red “This renewal has no active quote lines to put in the document.”</p></article>
+  </div>
+  <div class="callout warn">Compare J2’s total (£6,552.00) with the New Contract Value (£6,240). The difference (£312) is the 2-yearly line: the document plans 2 visits over 3 years, while the contract value counts 1.5. Say in your feedback which figure is right for Assurity Consulting.</div>
+</section>
+
+<section id="rh-workflow" data-section="rh-workflow">
+  <div class="sechead"><h2>K. Renewal stages – QC, proposal and acceptance</h2><span class="who">Account managers, QC reviewer, renewal admin</span></div>
+  <p>The Overview tab of a renewal shows the <strong>Renewal Progress</strong> bar and one action panel for the current stage. Stages only move through these buttons (or an admin override).</p>
+  <div class="tablewrap"><table><thead><tr><th>Renewal Stage</th><th>Panel</th><th>Button</th><th>Moves to</th><th>Columns written</th></tr></thead><tbody>
+    <tr><td>Not Started, In Progress, Returned to Consultant</td><td>Submit for quality check</td><td>Submit for QC</td><td>Pending Quality Check</td><td>QC Status; reviewers notified</td></tr>
+    <tr><td>Pending Quality Check</td><td>Quality check</td><td>Pass QC / Return to consultant</td><td>Send Documents to Customer / Returned to Consultant</td><td>QC Feedback; Owner notified</td></tr>
+    <tr><td>Send Documents to Customer</td><td>Send proposal to customer</td><td>Mark proposal sent</td><td>Waiting for Renewal</td><td>Proposal Method, Proposal Sent By, Date Proposal Sent</td></tr>
+    <tr><td>Waiting for Renewal</td><td>Customer PO document + Customer Accepted</td><td>Upload PO / Complete &amp; Continue to Anomaly Check</td><td>Anomaly Check / Before-After Reporting</td><td>PO Document; acceptance and invoicing columns</td></tr>
+    <tr><td>Anomaly Check / Before-After Reporting</td><td>Sections L and M</td><td>Make Contract Live</td><td>Live (old contract → Reported)</td><td>See section M</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="K1"><header><span class="tid">K1</span><h4>Renewal Progress bar</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>On the Riverside renewal’s Overview tab read <strong>Renewal Progress</strong>.</li>
+        <li>Click <strong>Pending QC</strong>, then <strong>In Progress</strong>, then <strong>In Progress</strong> again.</li>
+        <li>Ask the non-admin from B2 to click <strong>Not Started</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“Click a stage for details. Stages move only through the action buttons below.” and nine circles: Not Started, In Progress, Pending QC, Returned, Send Docs, Waiting, Anomaly Check, Live, Reported. Not Started has a tick, In Progress is highlighted and the line is filled up to it. Pending QC shows “Pending Quality Check”, “Waiting for a QC reviewer to approve or return.” and “Reached via: Request Quality Check”. In Progress shows “Current stage”. Clicking the same circle again closes the details. Clicking never changes the stage. The non-admin sees no <strong>Admin override</strong> box.</p></article>
+
+    <article class="test" data-id="K2"><header><span class="tid">K2</span><h4>Admin stage override</h4><span class="tag">Admin</span><span class="role">Renewal admin</span></header>
+      <ol>
+        <li>As a renewal admin click <strong>Not Started</strong> on the Riverside renewal.</li>
+        <li>Type “test” in the reason box; then change it to “TEST – Sam – checking override”. Click <strong>Override to Not Started</strong>.</li>
+        <li>Check the board and the item’s updates.</li>
+        <li>Click <strong>In Progress</strong>, enter a reason and click <strong>Override to In Progress</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>An <strong>Admin override</strong> box with “Reason for overriding the stage (required, posted as an update)”; the button stays greyed until the reason has at least 5 characters. Then “Stage overridden to Not Started — reason posted as an update”; Renewal Stage on the board = Not Started; an update “Stage override by [you]: "In Progress" → "Not Started"” and “Reason: TEST – Sam – checking override”. Step 4 works the same way and puts the stage back to In Progress. Only people listed as Renewal admins see this box – board owners not on the list do not.</p></article>
+
+    <article class="test" data-id="K3"><header><span class="tid">K3</span><h4>Submit for quality check</h4><span class="tag">Two people</span><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the renewal’s Overview find <strong>Submit for quality check</strong>. Check that <strong>Submit for QC</strong> is greyed out.</li>
+        <li>Under <strong>QC reviewer(s)</strong> click your colleague’s name, click it again, then click it once more so it is selected.</li>
+        <li>Click <strong>Submit for QC</strong>. Ask your colleague to check their notifications.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Reviewer buttons for the people subscribed to the Opportunities board (“Loading reviewers…” first; “No board members found to review.” if none; “Couldn't load the reviewer list.” with <strong>Try again</strong> on a failure). A selected name is highlighted. After submitting: <strong>Sent for quality check</strong>; Renewal Stage Pending Quality Check; QC Status column = your colleague; they get a monday notification “Renewal ready for quality check” on the renewal. The panel becomes <strong>Quality check</strong> with “Reviewer: [name]”.</p></article>
+
+    <article class="test" data-id="K4"><header><span class="tid">K4</span><h4>QC returns the renewal</h4><span class="tag">Two people</span><span class="role">QC reviewer</span></header>
+      <ol>
+        <li>The reviewer opens the renewal (from the notification) and clicks <strong>Return to consultant</strong> with the feedback box empty.</li>
+        <li>They type “TEST – Sam – please check Site B price” and click <strong>Return to consultant</strong>, then confirm.</li>
+        <li>You (the Owner) open the renewal.</li>
+        <li>Resubmit as in K3.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Empty feedback: <strong>Add feedback before returning</strong>. Dialog “Return to consultant?” – “The renewal moves back to Returned to Consultant with your feedback.” Then <strong>Returned to consultant</strong>; Renewal Stage Returned to Consultant; QC Feedback “[yyyy-mm-dd] [reviewer] — RETURNED: TEST – Sam – please check Site B price”; the Owner gets “Renewal returned from QC”. You see <strong>Submit for quality check</strong> again with red “Returned by QC — address the feedback below, then resubmit.” and a grey box showing the feedback. Resubmitting moves it back to Pending Quality Check.</p></article>
+
+    <article class="test" data-id="K5"><header><span class="tid">K5</span><h4>QC passes the renewal</h4><span class="tag">Two people</span><span class="role">QC reviewer</span></header>
+      <ol>
+        <li>The reviewer types “TEST – Sam – looks good”, clicks <strong>Pass QC</strong>, then <strong>Cancel</strong>.</li>
+        <li>They click <strong>Pass QC</strong> again and confirm with <strong>Pass QC</strong>.</li>
+        <li>Check QC Feedback on the board and the Owner’s notifications.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Dialog “Pass quality check?” – “The renewal moves to Send Documents to Customer and any feedback is added to the QC history.” Then <strong>QC passed</strong>; Renewal Stage Send Documents to Customer; QC Feedback has a new top line “[date] [reviewer] — PASSED: TEST – Sam – looks good” with the RETURNED line kept below; the Owner gets “Renewal passed QC”. The panel becomes <strong>Send proposal to customer</strong>. (The app does not limit Pass QC to the chosen reviewer – note it if your process needs that.)</p></article>
+
+    <article class="test" data-id="K6"><header><span class="tid">K6</span><h4>Record the proposal as sent</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On <strong>Send proposal to customer</strong>, with nothing ticked, check that <strong>Mark proposal sent</strong> is greyed out.</li>
+        <li>Tick Email and Post. Leave <strong>Date sent</strong> as today.</li>
+        <li>Click <strong>Mark proposal sent</strong>, read the dialog, click <strong>Mark sent</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Tick boxes Email, Post and Customer Meeting; Date sent defaults to today. Dialog “Mark proposal sent?” – “Records the proposal as sent via Email, Post on [yyyy-mm-dd] and moves the renewal to Waiting for Renewal.” Then <strong>Proposal recorded — waiting for customer</strong>; Renewal Stage Waiting for Renewal; Proposal Method Email and Post; Proposal Sent By you; Date Proposal Sent today. The panel becomes <strong>Customer PO document</strong> with “Proposal sent [d MMM yyyy] by [you] via Email, Post.” Nothing is sent to the customer by this button.</p></article>
+
+    <article class="test" data-id="K7"><header><span class="tid">K7</span><h4>Upload the customer’s PO</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On <strong>Customer PO document</strong> check that <strong>Upload PO</strong> is greyed out.</li>
+        <li>Choose the file “TEST – Sam – PO.pdf” and click <strong>Upload PO</strong>.</li>
+        <li>Check the PO Document column on the board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong><strong>PO saved to the opportunity</strong> and “Saved in PO Document: TEST – Sam – PO.pdf” as a link; the file is also listed in the panel and is in the PO Document column. If an upload fails you see a red message ending “Your file is kept — try again.” and the button reads <strong>Retry upload</strong>.</p></article>
+
+    <article class="test" data-id="K8"><header><span class="tid">K8</span><h4>Customer Accepted – required fields and options</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Below the PO panel find <strong>Customer Accepted</strong>. Click <strong>Complete &amp; Continue to Anomaly Check</strong> with everything empty.</li>
+        <li>Fill in one field at a time, clicking the button after each: <strong>Order Confirmation Type</strong> Purchase Order Document; <strong>Customer Order Ref (PO Number)</strong> TEST-PO-001; <strong>Invoice Address</strong>; <strong>Invoicing Email</strong> (your own); <strong>Invoice Frequency</strong> “Other” with <strong>Other Invoicing Frequency</strong> left empty.</li>
+        <li>Pick a normal Invoice Frequency. Set <strong>PO Expiry Type</strong> to Full Term, then N/A, then Partial Term (no date) and click the button.</li>
+        <li>With Partial Term, pick 30 Jun 2028 as <strong>PO Expiry Date</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>In order: “Please select a confirmation type”, “Please enter a customer order reference”, “Please enter an invoice address”, “Please enter an invoicing email”, “Please select an invoice frequency”, “Describe the invoicing frequency for "Other"”, “Please select a PO expiry type”, “Please select a PO expiry date for partial term”. Order Confirmation Type offers Customer Email, Live on Verbal and Purchase Order Document. Invoice Frequency offers the board’s Invoice Frequency labels (“Loading…” first); “Other” adds the Other Invoicing Frequency box. Full Term fills PO Expiry Date with 31 Dec 2029 (the contract end), greys it out and says “Auto-filled with contract end date”; N/A clears and greys it; Partial Term lets you pick a date, and 30 Jun 2028 shows “⚠️ Mid-contract renewal will be flagged”. The stage stays Waiting for Renewal.</p></article>
+
+    <article class="test" data-id="K9"><header><span class="tid">K9</span><h4>Customer Accepted – save and move on</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Optional first: enter “not-an-email” as Invoicing Email, fill everything else and click the button. Then correct it to your own email.</li>
+        <li>Make sure the form reads: Purchase Order Document; TEST-PO-001; Invoicing Email = your own; a normal Invoice Frequency; Partial Term; 30 Jun 2028; Invoice Address “TEST – Sam – 1 Test Street, Horsham RH13 5QH”.</li>
+        <li>Click <strong>Complete &amp; Continue to Anomaly Check</strong>. Check the Overview and the board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>With the bad email: an error message, nothing saved, stage unchanged. With good data: <strong>Saving...</strong>, then “Customer acceptance saved — moved to Anomaly Check”. The Customer Accepted form disappears, the progress bar reaches Anomaly Check, and new panels appear: <strong>Anomaly Check</strong>, <strong>Checks Performed:</strong>, <strong>Contract Readiness</strong>, <strong>Before/After Report</strong>, <strong>PO Expiry Alert</strong> and <strong>Make Contract Live</strong>. On the board: Confirmation Type Purchase Order Document, Customer Order Ref TEST-PO-001, Invoice Address, Invoicing Email, Invoice Frequency, Other Invoicing Frequency empty, PO Expiry Type Partial Term, PO Expiry Date 30 Jun 2028, Mid-contract Renewal Flag Yes (a PO date before the contract end), Renewal Stage “Anomaly Check / Before-After Reporting”. (Full Term, or a date on or after the contract end, gives Mid-contract Renewal Flag No.)</p></article>
+  </div>
+</section>
+
+<section id="rh-anomaly" data-section="rh-anomaly">
+  <div class="sechead"><h2>L. Anomaly check</h2><span class="who">Account managers</span></div>
+  <p>At the Anomaly Check stage, <strong>Run Anomaly Check</strong> checks every active line (removed lines are skipped), writes the result to the renewal and, if anything is wrong, notifies the Owner and the company’s Account Manager. Any line change made in the app resets the result to Not Run.</p>
+  <div class="tablewrap"><table><thead><tr><th>Issue type</th><th>Flagged when</th><th>Example message</th></tr></thead><tbody>
+    <tr><td>Missing Visits</td><td>Not one-off and no visits per year</td><td>No visits per year (Frequency not set)</td></tr>
+    <tr><td>Unassigned or Ex-Employee Assignment</td><td>No Assigned Consultant, or a deactivated user</td><td>No consultant assigned / Assigned to deactivated user(s): [names]</td></tr>
+    <tr><td>Incorrect Visit Value</td><td>Price 0 or empty, or moved more than the tolerance % from Previous Selling Price</td><td>Price moved 30.0% from £250 to £325 (tolerance 25%)</td></tr>
+    <tr><td>No Planned Work</td><td>WEA line with Planned Work Checked = Not Checked</td><td>WEA line — planned work not checked</td></tr>
+    <tr><td>Missing Planned Start Date</td><td>First Visit — Calendar Year or Contract Year empty</td><td>First visit calendar year not set</td></tr>
+    <tr><td>Visit Outside Timeframe</td><td>Calendar Year before the start year or after the end year; Contract Year beyond the contract length</td><td>First visit year 2026 is outside the contract (2027–2029) / First visit in Year 4 but the contract is 3 year(s)</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="L1"><header><span class="tid">L1</span><h4>Run the check and find issues</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Quotes &amp; Invoices board, on the renewal’s lines: set Line 1 Actual Selling Price to 325; remove Line 3’s Assigned Consultant; set Line 2 First Visit — Calendar Year to 2026. Reload the renewal.</li>
+        <li>In the <strong>Anomaly Check</strong> panel click <strong>Settings</strong>, read it, close it.</li>
+        <li>Click <strong>Run Anomaly Check</strong>.</li>
+        <li>Check the board, your notifications and the renewal’s updates. Reload the app.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Settings: “Anomaly Check Settings” / “Set in the app settings”, <strong>Visit value tolerance %</strong> 25 (read only) and “Flag lines where price differs by more than this % from previous selling price”. Before running: “Status: Not Run” with red “Re-run the anomaly check — quote lines have changed since it last ran.” Running shows <strong>Running Check...</strong>, then “Anomaly check found 4 issues”, a box “4 issues found” with “Issue types: …”, and <strong>Issues by Line:</strong> – Incorrect Visit Value on Line 1 “Price moved 30.0% from £250 to £325 (tolerance 25%)”; Unassigned or Ex-Employee Assignment on Line 3 “No consultant assigned”; Visit Outside Timeframe on Line 2 “First visit year 2026 is outside the contract (2027–2029)”; No Planned Work on Line 2 “WEA line — planned work not checked”. The open icon on each opens that line in monday. Board: Anomaly Check Status Issue Found, Anomaly Types Flagged = those four types. You (Owner and Account Manager) get “Anomaly check found 4 issue(s) on "[renewal name]": …”, and an update “Anomaly check — 4 issue(s):” lists each one. After reloading, the status line reads “Status: Issue Found” with the four type badges. <strong>Contract Readiness</strong> lists “Anomaly check must be Cleared”.</p></article>
+
+    <article class="test" data-id="L2"><header><span class="tid">L2</span><h4>Fix the issues and clear the check</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the board: Line 1 price back to 260; Line 3 Assigned Consultant = you; Line 2 First Visit — Calendar Year back to 2027.</li>
+        <li>In the app, on the Quotes &amp; Invoices tab, click Line 2’s <strong>Not Checked</strong> button under Planned work.</li>
+        <li>On the Overview click <strong>Run Anomaly Check</strong>. Reload.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The button changes to “Checked” with “Planned work updated. Re-run the anomaly check”, and Planned Work Checked on the board = Checked (clicking again switches it back). The run shows “Anomaly check complete - no issues found” and “All checks passed ✓”; after reloading, “Status: Cleared” with a green tick. Board: Anomaly Check Status Cleared, Anomaly Types Flagged empty. No notification or update is sent for a clear result. Contract Readiness no longer lists the anomaly check.</p></article>
+
+    <article class="test" data-id="L3"><header><span class="tid">L3</span><h4>Line changes reset the check</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>With the check Cleared, on the Quotes &amp; Invoices tab mark your added line dead, then restore it.</li>
+        <li>Go back to the Overview and read the Anomaly Check and Contract Readiness panels.</li>
+        <li>Run the check again.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“Status: Not Run” with red “Re-run the anomaly check — quote lines have changed since it last ran.”; Anomaly Check Status Not Run on the board; Contract Readiness lists “Anomaly check must be Cleared” and <strong>Make Contract Live</strong> is greyed out. Running again gives Cleared. The same reset happens after Add Line, Planned work changes and applying or undoing a price change. Editing a line directly on the board does not reset it – re-run the check yourself after board edits.</p></article>
+  </div>
+</section>
+
+<section id="rh-golive" data-section="rh-golive">
+  <div class="sechead"><h2>M. Readiness, Before/After report and Make Contract Live</h2><span class="who">Account managers; Contracts Manager and Finance receive notifications</span></div>
+  <p>At the Anomaly Check stage the app lists anything that still blocks go-live, builds the Before/After report, and finally makes the renewal live and closes off the old contract.</p>
+  <div class="tablewrap"><table><thead><tr><th>Board / item</th><th>What Make Contract Live writes</th></tr></thead><tbody>
+    <tr><td>Opportunities – old contract</td><td>Renewal Stage Reported (Deal Stage unchanged). Archived only if “Archive previous contract on go-live” is on.</td></tr>
+    <tr><td>Opportunities – renewal</td><td>Deal Stage Won, Renewal Stage Live, a summary update, and a draft confirmation email update when set up (M5)</td></tr>
+    <tr><td>Notifications</td><td>Assigned Consultants on active lines, the company’s Account Manager, the Contracts Manager and Finance recipients from Settings</td></tr>
+    <tr><td>Quotes &amp; Invoices</td><td>Nothing</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="M1"><header><span class="tid">M1</span><h4>Contract Readiness</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>On the Riverside renewal’s Overview read <strong>Contract Readiness</strong> and the line above the <strong>Make Contract Live</strong> button.</li>
+        <li>On the board set First Visit — Week Number 30 on your added line. Reload.</li>
+        <li>Optional: clear Customer Order Ref on the board and reload; set Confirmation Type to Live on Verbal and reload; then put back Purchase Order Document and TEST-PO-001 and reload.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong><strong>Requirements not met:</strong> with “First Visit Week Number is missing on 1 active line: [your added line]”; the Make Contract Live button greyed out and “Not available yet: First Visit Week Number is missing on 1 active line: [name].” (“(+N more, listed above)” is added when there are several problems). After step 2: “All checks passed — ready to go live” and the button is active. Optional step: “Customer Order Ref is required (or Confirmation Type = "Live on Verbal")” appears, and goes away with Live on Verbal. Other possible messages: “Anomaly check must be Cleared”, “Invoice address is required”, “Invoicing email is required”, “Invoice frequency is required”, “Confirmation type is required”, “Link the Account on this opportunity first”, “The previous contract is not linked to this renewal”.</p></article>
+
+    <article class="test" data-id="M2"><header><span class="tid">M2</span><h4>Before/After Report</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>In <strong>Before/After Report</strong> click <strong>Generate Before/After Report</strong> and wait.</li>
+        <li>Click <strong>Download PDF</strong> and open it. Check the Before/After Report column on the board.</li>
+        <li>Click <strong>Regenerate Report</strong>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong><strong>Generating…</strong>, “Saving to the opportunity…”, then <strong>Before/After Report saved to the opportunity</strong>, a <strong>Saved</strong> badge and “Saved in Before/After Report: Before-After-Report-TEST-Sam-Riverside-Offices-Ltd-[yyyy-mm-dd].pdf”; the file is in the Before/After Report column. The landscape PDF: “Before / After Renewal Report”; “Customer: TEST – Sam – Riverside Offices Ltd”; “Contract: 1 Jan 2027 – 31 Dec 2029”; “Previous contract end: 31 Dec 2026”; “Report date: [today]”; “Price change applied: Increase 4% (All Services) on [date] by [you]” and “4 line(s) repriced”. “Contract lines (4)” with Site Code, Site, Work Type, Line Status, Visits / yr, Previous, New, Change £, Change %: Line 1 £250.00 → £260.00, +£10.00, +4.0%; Line 2 £400.00 → £416.00, +£16.00, +4.0%; Line 3 £600.00 → £624.00, +£24.00, +4.0%; your added line “New” in Previous, “—” for the changes. Visits / yr shows each line’s Number of Visits (12, 3, 2, 3) – raise it if you expected visits per year. “Removed lines (0)” / “No lines removed.” Contract totals: Previous Contract Value £5,100.00; New Contract Value £6,240.00; Difference +£1,140.00 (+22.4%). Regenerating adds another file to the column. (If saving fails, a red message and <strong>Retry saving</strong> appear.)</p></article>
+
+    <article class="test" data-id="M3"><header><span class="tid">M3</span><h4>PO Expiry Alert</h4><span class="tag">Overnight</span><span class="role">Account manager</span></header>
+      <ol>
+        <li>Find the <strong>PO Expiry Alert</strong> panel and switch it on. Check the PO Expiry Alert column on the board.</li>
+        <li>Switch it off, check the board, and switch it on again.</li>
+        <li>On the board set the renewal’s PO Expiry Date to the date 31 days from today. Leave the alert on.</li>
+        <li>Next morning, check for the alert. Then set PO Expiry Date back to 30 Jun 2028.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“PO Expiry Alert” with “Alert runs via board automation — 30 days before 30 Jun 2028” (the panel only appears when PO Expiry Date is set). On ticks the PO Expiry Alert column, off unticks it; a failure shows “Failed to save PO Expiry Alert” and the switch flips back. Next morning the board automation has sent its PO expiry alert for this renewal. If nothing arrives, record it.</p></article>
+
+    <article class="test" data-id="M4"><header><span class="tid">M4</span><h4>Make Contract Live</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Check B1 is done (Contracts Manager, Finance recipients and confirmation email template filled in). On the board tick Send Confirmation Email on the renewal (for M5). Reload.</li>
+        <li>Click <strong>Make Contract Live</strong>, read the dialog and click <strong>Cancel</strong>.</li>
+        <li>Click it again and <strong>Confirm &amp; Go Live</strong>.</li>
+        <li>Read the result card, then check both items on the board, the notifications (you, the Contracts Manager and Finance) and the renewal’s updates.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Dialog “Confirm: Make Contract Live” – “The previous contract will be set to Reported, this renewal set to Won and Live, and the consultants, Account Manager, Contracts Manager and Finance will be notified.” with Customer: TEST – Sam – Riverside Offices Ltd, PO Number: TEST-PO-001, Contract Period: 1 Jan 2027 - 31 Dec 2029. Then <strong>Making Contract Live…</strong> and <strong>Contract is now live</strong>. Card <strong>Contract is live</strong>: “Previous contract "TEST – Sam – Riverside Offices contract" set to Reported”, “Renewal set to Won / Live”, “Previous contract kept (setting "Archive previous contract on go-live" is off)”; <strong>Notified</strong>: you — Consultant, you — Account Manager, [name] — Contracts Manager, [names] — Finance; <strong>Skipped</strong> (see M5). <strong>Dismiss</strong> hides the card. Board: renewal Deal Stage Won, Renewal Stage Live; Riverside Renewal Stage Reported, Deal Stage still Won, not archived. Notifications “Renewal "[renewal name]" is now Live.”; Finance’s also has “PO: TEST-PO-001. Invoice address: TEST – Sam – 1 Test Street, Horsham RH13 5QH. Invoicing email: [your email]. Frequency: [Invoice Frequency].” Update “Contract made live by [you].” with the same points, “Notified: …” and “Not notified: …”. With an empty setting the Skipped list shows e.g. “Contracts Manager — Setting "Contracts Manager (person)" is empty” or “Finance — Setting "Finance recipients (people)" is empty”.</p></article>
+
+    <article class="test" data-id="M5"><header><span class="tid">M5</span><h4>Customer confirmation email draft</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>After M4, open the renewal’s updates and look at the <strong>Skipped</strong> list on the result card.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>An update “DRAFT — customer confirmation email (not sent)” followed by the template with the gaps filled in: “TEST – Dear TEST – Sam – Contact, your renewal for TEST – Sam – Riverside Offices Ltd (PO TEST-PO-001) runs from 2027-01-01 to 2029-12-31.” (dates appear as year-month-day). Skipped: “Customer — Customer email not sent — no email sender connected; draft saved as an update”. No email is sent to anyone. If the template had been empty: no draft and “Customer email not sent — no template configured”. If Send Confirmation Email had not been ticked: no draft and no Customer entry.</p></article>
+
+    <article class="test" data-id="M6"><header><span class="tid">M6</span><h4>After go-live</h4><span class="role">Account manager</span></header>
+      <ol>
+        <li>Reload the renewal and read the header and Overview.</li>
+        <li>Open Riverside.</li>
+        <li>Open the dashboard, click <strong>Refresh</strong>, and look for both items (use <strong>Superseded (N)</strong> for Riverside).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Renewal: header “Live”; the progress bar has seven ticks and Live highlighted; no QC, anomaly, readiness or Make Contract Live panels. The amber panel has gone and a <strong>Copy Forward</strong> button now shows (Deal Stage Won, Frequency Contract, valid dates) – this is for the next renewal in 2030; do not click it. Riverside: “Reported” in the header and “Renewal created” with <strong>Open renewal</strong>. Dashboard: Riverside is not counted and appears in the Superseded list; the renewal is in “&gt; 90 days” (Renewal Date 1 Jan 2030) showing “Won · Live”.</p></article>
+  </div>
+</section>
+
+<section id="rh-help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>Why can’t I see the Copy Forward button?</dt>
+    <dd>The amber panel under the header says why: Deal Stage is not Won, nothing is Contract or Repeat, or the contract dates are missing or under a year. “Renewal created” with <strong>Open renewal</strong> means a renewal already exists. If Copy Forward says “Link the Account on this opportunity first”, the company was only found through the contact – use <strong>Save to this item</strong> (D3).</dd>
+    <dt>Every renewal says “Copy Forward isn’t available yet – Deal Stage is blank”. Is that wrong?</dt>
+    <dd>No. A renewal’s Deal Stage is only set to Won by <strong>Make Contract Live</strong>, so the panel shows until then.</dd>
+    <dt>Copy Forward only copied some lines. What now?</dt>
+    <dd>Stay on that screen and click <strong>Retry failed lines</strong> (F7). The button is only offered on the screen where Copy Forward ran. If you have already left it, tell the project team – running Copy Forward again just opens the existing renewal.</dd>
+    <dt>I added or removed a line but New Contract Value didn’t change.</dt>
+    <dd>New Contract Value is recalculated when a price change is applied or undone, and when the contract dates on a renewal are saved. The Contract value column on the Quotes &amp; Invoices tab is always up to date.</dd>
+    <dt>The Price Change tab says “Failed to apply price change”.</dt>
+    <dd>The most common cause is that the Price Change Scope column on the Opportunities board has no label matching the work category you chose (or “All Services”). Ask an admin to add the label, then try again.</dd>
+    <dt>The anomaly check says “Failed to run anomaly check”.</dt>
+    <dd>Check that the renewal has its own company link (not just through the contact) and valid contract dates, then try again.</dd>
+    <dt>Who can change settings or override a stage?</dt>
+    <dd>Renewal admins listed on the Settings page. Until any are listed, Opportunities board owners can change settings and price rates – but only renewal admins can override a stage.</dd>
+    <dt>Where does the QC reviewer list come from?</dt>
+    <dd>From the people subscribed to the Opportunities board. If someone is missing, subscribe them to the board.</dd>
+    <dt>Does the app send anything to clients?</dt>
+    <dd>No. <strong>Mark proposal sent</strong> only records what you did, the renewal document downloads to your computer, and the confirmation email is saved as a draft update for someone to send.</dd>
+    <dt>An old contract has disappeared from the dashboard.</dt>
+    <dd>It is either One-off or superseded (a later Contract/Repeat opportunity on the same company, or a renewal that is Live or Won). Click <strong>Superseded (N)</strong> to see superseded contracts.</dd>
+    <dt>How is the Quote No chosen?</dt>
+    <dd>The higher of the starting quote number (Price increases page) and the highest Quote No on the Quotes &amp; Invoices board, plus 1. Every line copied for one renewal gets the same number, and a retry keeps it. Lines added with <strong>Add Line</strong> are not given a Quote No.</dd>
+    <dt>A red box says some lines are “only linked one way”.</dt>
+    <dd>The line is in the opportunity’s 🔗Related Quotes but doesn’t link back through 🔗Opportunity, or the other way round – usually migrated data. The lines are still included; fix the link in monday so both sides agree.</dd>
+    <dt>I changed something on the board but the app still shows the old value.</dt>
+    <dd>Reload the item. The app only reads the board when it opens or after its own actions.</dd>
+    <dt>Can Make Contract Live be undone?</dt>
+    <dd>There is no undo button. A renewal admin can override the Renewal Stage on both items and change the Deal Stage on the board – ask the project team first.</dd>
+    <dt>How do I clean up afterwards?</dt>
+    <dd>Delete or archive the TEST items you created on Opportunities, Quotes &amp; Invoices, Companies, People and Sites; delete the TEST price rates; check the starting quote number is back to its agreed value; and remove any TEST text from the confirmation email template.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-rh-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity Consulting monday.com UAT results – Contract Renewal Hub',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
