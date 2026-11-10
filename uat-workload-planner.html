@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Workload Planner UAT Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./">End-to-end UAT</a><a href="uat-quote-builder.html">Quote Builder</a><a href="uat-approval-portal.html">Approval Portal</a><a href="uat-order-processor.html">Order Processor</a><a href="uat-workload-planner.html" aria-current="page">Workload Planner</a><a href="uat-sample-planner.html">Sample Planner</a><a href="uat-renewal-hub.html">Renewal Hub</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#wp-start">Before you start</a></li>
+    <li><a href="#wp-access">A. Access and roles <span class="count" data-count="wp-access"></span></a></li>
+    <li><a href="#wp-admin">B. Admin set-up: consultants, competencies, targets, leave and work types <span class="count" data-count="wp-admin"></span></a></li>
+    <li><a href="#wp-queue">C. Unassigned jobs <span class="count" data-count="wp-queue"></span></a></li>
+    <li><a href="#wp-find">D. Find consultant: who is suggested <span class="count" data-count="wp-find"></span></a></li>
+    <li><a href="#wp-fire">E. Fire risk assessments <span class="count" data-count="wp-fire"></span></a></li>
+    <li><a href="#wp-score">F. Match scores and support options <span class="count" data-count="wp-score"></span></a></li>
+    <li><a href="#wp-allocate">G. Allocate <span class="count" data-count="wp-allocate"></span></a></li>
+    <li><a href="#wp-change">H. Re-allocate, change dates and return to queue <span class="count" data-count="wp-change"></span></a></li>
+    <li><a href="#wp-map">I. Map <span class="count" data-count="wp-map"></span></a></li>
+    <li><a href="#wp-workload">J. Consultant workload <span class="count" data-count="wp-workload"></span></a></li>
+    <li><a href="#wp-availability">K. Availability and My availability <span class="count" data-count="wp-availability"></span></a></li>
+    <li><a href="#wp-history">L. Allocation history <span class="count" data-count="wp-history"></span></a></li>
+    <li><a href="#wp-dashboard">M. Dashboard <span class="count" data-count="wp-dashboard"></span></a></li>
+    <li><a href="#wp-settings">N. Settings <span class="count" data-count="wp-settings"></span></a></li>
+    <li><a href="#wp-help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · Workload Planner</p>
+  <h1>Workload Planner: in-depth test script</h1>
+  <p class="lead">Every screen of the Workload Planner: roles, the Unassigned jobs list, Find consultant matching and scores, allocating, re-allocating and returning visits, the map, workload and availability views, history, the dashboard and the Admin area.</p>
+  <p class="byline">Prepared by Mutherboard · November 2026 · Version 1 · 55 tests · 7–9 hours, best split over three sessions · For: Allocation admins and allocators, with a consultant and a second tester for the two-person steps</p>
+</header>
+
+<section id="wp-start">
+  <h2>Before you start</h2>
+  <p>The Workload Planner (the name at the top of the app reads <b>Workload Map</b>) is where the allocation team gives each visit a consultant. It lists every visit at Ready for Allocation, suggests the best-matched consultants with a score and plain-English reasons, checks for clashes, then writes the consultant and dates back to the Visits board and sends the consultant a monday.com notification. It also has a map, consultant workload and availability views, allocation history, a dashboard and an Admin area for consultants, competencies, targets, leave, work types and settings.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>A monday.com login in the Assurity Consulting workspace that can open the Workload Planner and edit the Visits, Sites, Companies, Consultant Skills &amp; Availability, Samples by Day, Lab Capacity and Report SLA Rules boards.</li>
+    <li>An allocation admin for tests marked Admin. Admins are the people listed in <b>Admin</b> → <b>Settings</b> → <b>Allocation admins</b>. While that list is empty, the owners of the Consultant Skills &amp; Availability board are the admins.</li>
+    <li>Everyone who allocates must be listed under <b>Allocators</b> (or be an admin). Anyone else sees the app read-only. The app checks your access when it opens, so reload the app after your access changes.</li>
+    <li>A second tester for steps marked Two people. Their login is linked to the TEST support consultant and receives notifications. Each TEST consultant needs a login that isn’t already linked to another consultant row.</li>
+    <li>Tests that change <b>Settings</b> or a work type rule affect everyone straight away. Agree a time with the allocation team, write down the original value before you change it, and put it back as soon as the test is done.</li>
+    <li>Never allocate a real visit. Never allocate a TEST visit to a real consultant – they would get a monday.com notification. Putting your TEST company in the TEST consultants’ <b>Approved accounts</b> (test B1) keeps real consultants out of the suggestions for your TEST visits.</li>
+  </ul>
+  <h3>Test data</h3>
+  <ul>
+    <li>Use your own first name where this script says “Sam”.</li>
+    <li>Company: “TEST – Sam – Company” on the Companies board. Leave its “SLA Report Delivery (days)” blank for now.</li>
+    <li>Sites, each linked to the TEST company: “TEST – Sam – Leeds Office” (postcode LS1 4AP, Town Leeds, Fire Building Type “Office / shop / school”); “TEST – Sam – Bradford Unit” (postcode BD1 1HY, Town Bradford, Avoid Days “Friday”); “TEST – Sam – Edinburgh Flats” (postcode EH1 2NG, Town Edinburgh). If a site doesn’t appear on the Map later, add its latitude and longitude on the Sites board.</li>
+    <li>In <b>Admin</b> → <b>Work types</b> pick three work types and note their names, lead times and minimum daily return: an H&amp;S work type with Activity “R – Risk Assessment”, a lead time of at least 2 weeks and a <b>Min daily return</b> above £300 (this script’s examples assume 4–8 weeks and £500 – use your rule’s numbers); a Fire work type with Activity “R – Risk Assessment”; and a WEA work type.</li>
+    <li>Build a TEST deal and quote in Quote Builder with the five lines below, approve it in the Quote Approval Portal using your own email address, then process the order in the Order Processor. The Order Processor creates the visits on the Visits board at Ready for Allocation, named by report number (for example 10234/1, 10234/2). In this app, find them by typing “TEST – Sam” in the <b>Account</b> filter.</li>
+    <li>L1 – the H&amp;S work type at Leeds Office, 4 visits a year, 1 day a visit, £600 a visit. L1/1 is the main allocation visit (G1, G2, H1–H3); L1/2 is used for Find consultant checks (D, F) and then G3; L1/3 for G5, the Map (I1) and J2; L1/4 is marked Visit Carried Out in D2. “L1/2” means the L1 visit whose name ends in /2.</li>
+    <li>L2 – the H&amp;S work type at Bradford Unit, 4 visits a year, 0.5 day a visit, £150 a visit (deliberately below the minimum daily return). L2/1 is used in H4–H5; L2/2 in F2; L2/3 on the Map; L2/4 in D6 and G4.</li>
+    <li>L3 – the Fire work type at Leeds Office, 2 visits a year, 1 day, £450 a visit. L3/1 is used in section E; L3/2 is marked Visit Carried Out in E2.</li>
+    <li>L4 – the WEA work type at Leeds Office, 2 visits a year, 2 days a visit, £1,800 a visit, with planned samples – for example 12 × W8-2 (Pot) per visit – so the Order Processor also creates Samples by Day rows. L4/1 is used in G7; L4/2 in G6.</li>
+    <li>L5 – the H&amp;S work type at Edinburgh Flats, 1 visit, 1 day, £700. Used in D6, F3 and H4.</li>
+    <li>On the Visits board, set Proposed Week Number and Proposed Calendar Year on these TEST visits: L1/2, L2/2 and L2/4 → week 3 of 2027 (w/c 18/01/2027); L1/3 and L2/3 → week 5 of 2027 (w/c 01/02/2027). Leave the others as the Order Processor set them. If you test after December 2026, pick weeks at least 6 weeks ahead and shift the example dates to match.</li>
+    <li>The TEST consultants “TEST – Sam – Lead” (linked to your login) and “TEST – Sam – Support” (linked to the second tester’s login) are created in tests B1–B3.</li>
+  </ul>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only, separately for each app’s script. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date check that runs each morning. Set things up as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="wp-access" data-section="wp-access">
+  <div class="sechead"><h2>A. Access and roles</h2><span class="who">Allocation admin, with a second tester</span></div>
+  <p>The app has four kinds of user. Allocation admins can open <b>Admin</b> and change settings. Allocators can allocate, re-allocate, change dates, return visits, edit site notes and see work restrictions and leave notes. Everyone else can look but not change anything. Consultants manage their own time off on <b>My availability</b>.</p>
+  <div class="tablewrap"><table><thead><tr><th>Role</th><th>How you get it</th><th>What you can do</th></tr></thead><tbody>
+    <tr><td>Allocation admin</td><td>Listed in Admin → Settings → Allocation admins. While nobody is listed: an owner of the Consultant Skills &amp; Availability board.</td><td>Everything, including the <b>Admin</b> tab.</td></tr>
+    <tr><td>Allocator</td><td>Listed in Admin → Settings → Allocators.</td><td>Allocate, re-allocate, change dates, return to queue, edit site notes, see work restrictions and leave notes, view and edit anyone’s availability, see Team month.</td></tr>
+    <tr><td>Read-only user</td><td>Anyone else.</td><td>View every page. No Select buttons and no visit actions.</td></tr>
+    <tr><td>Consultant</td><td>A row on Consultant Skills &amp; Availability with their login linked.</td><td>Add, edit and delete their own time off on My availability.</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>Who can open Admin</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Ask the project lead whether anyone is listed under <b>Admin</b> → <b>Settings</b> → <b>Allocation admins</b> yet. If nobody is, do steps 2–5. If people are listed, go to step 6.</li>
+        <li>Ask an owner of the Consultant Skills &amp; Availability board to open the Workload Planner and look at the top bar.</li>
+        <li>Ask someone who is not a board owner and not an allocator to open the app.</li>
+        <li>As the board owner, click <b>Admin</b> → <b>Settings</b> and read the text under <b>Allocation admins</b>. Without choosing anyone, click <b>Save settings</b>, then <b>Save settings</b> in the box that appears.</li>
+        <li>Reload the app. Ask a second board owner (not you) to reload too.</li>
+        <li>Ask a board owner who isn’t in the Allocation admins list to open the app.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the top bar shows <b>Dashboard</b>, <b>Unassigned jobs</b>, <b>Map</b>, <b>Consultant workload</b>, <b>Availability</b>, <b>My availability</b>, <b>Allocation history</b> and <b>Admin</b>. Step 3: no <b>Admin</b> tab. Step 4: the text reads “People who can open Admin and change these settings. Until anyone is chosen, only the owners of the consultants list in monday.com can get in. You stay an admin when you save. Default: none.” and saving shows <b>Saved</b>. Step 5: your name is now highlighted under Allocation admins, and the other board owner no longer has the <b>Admin</b> tab. Step 6: a board owner who isn’t listed has no <b>Admin</b> tab.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>Adding and removing allocators and admins</h4><span class="tag">Two people</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li><b>Admin</b> → <b>Settings</b>. Under <b>Allocators</b>, click the second tester’s name so it turns teal. Click <b>Save settings</b>, then <b>Save settings</b> in the box.</li>
+        <li>Second tester: reload the app, open <b>Unassigned jobs</b>, type “TEST – Sam” in <b>Account</b> and click <b>Find consultant</b> on any TEST visit.</li>
+        <li>Admin: click the second tester’s name under Allocators again and click <b>Cancel</b>. Click it again, click <b>Remove</b>, then save settings.</li>
+        <li>Second tester: reload the app and open Find consultant on the same visit.</li>
+        <li>Admin: under <b>Allocation admins</b> click your own name, click <b>Remove</b>, save settings, then reload the app and go back to Settings.</li>
+        <li>Admin: add the second tester back as an allocator and save – later tests need it.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: a box titled <b>Save settings?</b> saying “These settings apply straight away to matching, warnings and access for everyone using the app.”, then <b>Saved</b>. Step 2: the second tester sees <b>Select</b> buttons and <b>Choose someone else</b>, but no <b>Admin</b> tab. Step 3: a box “Remove [name] as allocator?” with “[name] will lose allocator access when you save settings.”; Cancel leaves the name highlighted. Step 4: the grey message “You can view suggestions, but only allocators and allocation admins can allocate. Ask an admin if you need access.” and no Select buttons. Step 5: your name is still highlighted – the person saving always stays an admin.</p></article>
+
+    <article class="test" data-id="A3"><header><span class="tid">A3</span><h4>What a read-only user sees</h4><span class="role">Read-only user</span></header>
+      <ol>
+        <li>Sign in as someone who is neither an admin nor an allocator. Open <b>Unassigned jobs</b>, type “TEST – Sam” in Account and click <b>Find consultant</b> on L1/2.</li>
+        <li>Click Find consultant on L3/1 (the fire risk assessment).</li>
+        <li>Open <b>Consultant workload</b> and click any teal (booked) day.</li>
+        <li>Click a consultant’s name to open their profile.</li>
+        <li>Open <b>Allocation history</b> and scroll to <b>Not yet planned</b>.</li>
+        <li>Open <b>My availability</b>.</li>
+        <li>Open <b>Dashboard</b> → <b>Data to fix</b> and click a row that has an arrow (for example <b>Consultants without a Login (monday.com account)</b>).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: suggestions with scores and reasons, the grey message “You can view suggestions, but only allocators and allocation admins can allocate. Ask an admin if you need access.”, and no <b>Select</b>, <b>Select both</b> or <b>Choose someone else</b>. The <b>Site allocation notes</b> box only appears if the site already has notes, with no <b>Add notes</b> or <b>Edit</b>. Step 2: no <b>Change level</b> drop-down. Step 3: the pop-up says “Read-only view.” Step 4: no <b>Restrictions</b> section, and leave entries show without their notes. Step 5: no Actions column. Step 6: no Calendar / Team month switch and no consultant drop-down. Step 7: the Admin page shows “Only allocation admins can open Admin” and “Ask an allocation admin to add you. If no admins are set yet, the owners of the consultants list in monday.com can open it.”</p></article>
+  </div>
+</section>
+
+<section id="wp-admin" data-section="wp-admin">
+  <div class="sechead"><h2>B. Admin set-up: consultants, competencies, targets, leave and work types</h2><span class="who">Allocation admin</span></div>
+  <p>The <b>Admin</b> page (heading “Every change saves straight back to monday.com.”) has six tabs: <b>Consultants</b>, <b>Competencies</b>, <b>Targets</b>, <b>Leave &amp; training</b>, <b>Work types</b> and <b>Settings</b>. Run B1–B3 first: they create the two TEST consultants used everywhere else. Settings is tested in section N and inside the tests that use each setting.</p>
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>Create the TEST consultants (Consultants tab)</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li><b>Admin</b> → <b>Consultants</b> → <b>Add consultant</b>.</li>
+        <li>Name “TEST – Sam – Lead”. In <b>Login (monday.com account)</b> pick your own name (if it shows “– already linked to …”, stop and ask the project lead which login to use). <b>Team</b> “Jamie's team”. <b>Annual target (£)</b> 60000.</li>
+        <li>In <b>Base location</b> type “ZZ1 1ZZ” and click <b>Look up</b>. Then type “LS1 4AP” and click Look up.</li>
+        <li>In <b>Approved accounts</b> type “TEST – Sam” and pick your TEST company.</li>
+        <li>Change Annual target to -5 and click <b>Add consultant</b>. Put it back to 60000 and click Add consultant.</li>
+        <li>Click Add consultant again and create “TEST – Sam – Support” the same way, with the second tester’s login, the same team, base LS1 4AP, Approved accounts = TEST company, and under <b>Services qualified for</b> click <b>H&amp;S</b> so it turns teal. Save.</li>
+        <li>On Support, change the Login to your own name and click <b>Save changes</b>. Put the second tester’s login back and save.</li>
+        <li>Change Support’s Name, then click TEST – Sam – Lead in the list on the left. Click <b>Cancel</b> in the box and undo your name change.</li>
+        <li>Open the Consultant Skills &amp; Availability board and find both rows.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 3: “That postcode wasn’t found. Check it and try again.”, then the hint “Currently: LS1 4AP, Leeds”. Step 4: a TEST company chip with a remove cross (the search starts after 2 letters). Step 5: “Annual target must be a number of £0 or more, or left blank.”, then <b>Saved</b> and the new name in the list. Step 7: the drop-down shows your name as “– already linked to TEST – Sam – Lead”, and saving shows “This login is already linked to TEST – Sam – Lead.” Step 8: a box “Discard unsaved changes?” – “Your changes to [name] haven’t been saved.”; <b>Unsaved changes</b> shows next to the button while there are edits. Step 9: two rows with Consultant (the login), Team, Annual Target 60,000, Base Location in Leeds, Account Restrictions = the TEST company, Active ticked; Support’s Services Qualified For shows H&amp;S.</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Competency scores and Services Qualified For (Competencies tab)</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li><b>Admin</b> → <b>Competencies</b> → click TEST – Sam – Lead.</li>
+        <li>In <b>Add a service…</b> choose H&amp;S and click <b>Add service</b>. In the <b>R · Risk assessment</b> box choose “4 – Can teach others”.</li>
+        <li>Add the Fire service. Set R to “4 – Can teach others” and <b>Fire level</b> to Foundation.</li>
+        <li>Change H&amp;S R to “2 – With support”, then back to “4 – Can teach others”.</li>
+        <li>Click TEST – Sam – Support. Add WEA and set S, M, A, R and T all to “4 – Can teach others”. Do not add an H&amp;S row for Support.</li>
+        <li>Open the Consultant Competencies and Consultant Skills &amp; Availability boards.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “No services yet. Add one below.” and the note “Changes save as soon as you pick a value. Services Qualified For is updated automatically to every service with any score of 3 or more.” Each change shows <b>Saved</b> straight away – there is no save button. Step 2: “Now qualified for: H&amp;S”. Step 3: the list includes Fire. Step 4: at score 2, H&amp;S drops out of “Now qualified for”; back at 4 it returns. Score boxes are coloured (1 red, 2 amber, 3 light green, 4 green). Step 6: items “TEST – Sam – Lead – H&amp;S”, “TEST – Sam – Lead – Fire” and “TEST – Sam – Support – WEA” with the chosen scores and fire level; Services Qualified For is H&amp;S and Fire for Lead, and H&amp;S and WEA for Support.</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>Monthly targets: spread, save and roll forward (Targets tab)</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li><b>Admin</b> → <b>Targets</b> → TEST – Sam – Lead. Check the year shown.</li>
+        <li>Click <b>Spread annual target evenly</b>.</li>
+        <li>Change August to -100. Then put it back to 5000.</li>
+        <li>Change one month, then click the next-year arrow. Click <b>Cancel</b>, undo your change and click <b>Save targets</b>.</li>
+        <li>Click <b>Roll forward to next year</b> and confirm with <b>Roll forward</b>.</li>
+        <li>Open the Consultant Targets board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “July 2026 – June 2027” and “Annual target on file: £60,000 · This year’s months add up to £0”. Step 2: every month shows 5000 (£60,000 ÷ 12) and the total reads £60,000; nothing is saved yet. Step 3: “Targets must be numbers of £0 or more.” and Save targets greyed out. Step 4: a box “Discard unsaved targets?” – “Your target changes haven’t been saved.”; after saving, <b>Saved</b>. Step 5: the box “Roll TEST – Sam – Lead’s targets forward?” explains it copies July 2026 – June 2027 into July 2027 – June 2028, replacing targets already set; afterwards the page shows July 2027 – June 2028 with 5000 in each month. Step 6: 24 rows named like “TEST – Sam – Lead – Jul 2026”, each with Target 5,000. (An annual target of £50,000 would spread as 4166.67 a month.)</p></article>
+
+    <article class="test" data-id="B4"><header><span class="tid">B4</span><h4>Leave and training entries (Leave &amp; training tab)</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li><b>Admin</b> → <b>Leave &amp; training</b> → <b>By consultant</b> → TEST – Sam – Lead.</li>
+        <li>Under <b>Add leave or training</b> choose Type Training, From 07/12/2026, To 01/12/2026.</li>
+        <li>Change To to 08/12/2026, Notes “TEST – first aid course”, click <b>Add</b>.</li>
+        <li>Click the pencil on the entry, change To to 09/12/2026, click <b>Save changes</b>.</li>
+        <li>Click the bin, click <b>Cancel</b>. Click the bin again and click <b>Delete</b>.</li>
+        <li>Add Annual Leave 14/12/2026–15/12/2026. Click <b>Team calendar</b>, go to December 2026 and choose “Jamie's team” in the team box.</li>
+        <li>Check the Lead row on Consultant Skills &amp; Availability, then delete the 14–15 December entry.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “No leave or training recorded.” Step 2: “The end date must be on or after the start date.” and <b>Add</b> greyed out. Step 3: <b>Saved</b> and “Training · 07/12/2026 – 08/12/2026” with the note underneath. Step 4: the heading changes to <b>Edit entry</b> and the dates update. Step 5: a box “Delete training entry?” – “TEST – Sam – Lead: Training, 07/12/2026 to 09/12/2026. They’ll show as available on those days again.”; Cancel keeps it, Delete removes it. Step 6: the calendar shows Lead’s 14th and 15th in the Annual Leave colour, with a legend for Annual Leave, Training and Other; only that team is listed. Step 7: entries are subitems under the Lead row with Type, Dates and Notes; deleted entries are gone from the row.</p></article>
+
+    <article class="test" data-id="B5"><header><span class="tid">B5</span><h4>Work type rules (Work types tab)</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li><b>Admin</b> → <b>Work types</b>. Click the H&amp;S work type you used on L1. Look but don’t change anything.</li>
+        <li>Click <b>Add work type</b>. Name “TEST – Sam – Work type”, Service H&amp;S, Activity “A – Audit”, <b>Lead time min (weeks)</b> 6, <b>Lead time max (weeks)</b> 4, <b>Minimum daily return (£)</b> 400. Click <b>Add work type</b>.</li>
+        <li>Change the max to 8 and click Add work type.</li>
+        <li>Type -1 in Minimum daily return. Then put back 400, add Notes “TEST” and click <b>Save changes</b>.</li>
+        <li>Open the Work Type Rules board. Afterwards delete the TEST row on the board (the app has no delete).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the table (Work type, Service, Activity, Lead time, Min daily return) and an <b>Edit work type</b> form with the hint “Must match the work type name used on quotes exactly.” Step 2: “Lead time max must be the same as or longer than the minimum.” beside the button and no new row. Step 3: <b>Saved</b> and a new row “TEST – Sam – Work type | H&amp;S | A – Audit | 6–8 weeks | £400”. Step 4: “Lead times and minimum return must be numbers of 0 or more.” with the button greyed out, then Saved. Step 5: the new item with Service, Activity, lead times, minimum daily return and notes. The Activity list offers S – Systems, M – Management Review, A – Audit, R – Risk Assessment, T – Training, Any (highest score) and Not allocated.</p></article>
+  </div>
+</section>
+
+<section id="wp-queue" data-section="wp-queue">
+  <div class="sechead"><h2>C. Unassigned jobs</h2><span class="who">Allocator (anyone can view)</span></div>
+  <p><b>Unassigned jobs</b> lists every visit at Ready for Allocation (up to 2,000), earliest proposed week first, 50 rows at a time. Each row has a <b>Find consultant</b> button and up to three flag icons. Hover over or tap an icon to read it. The lead-time check counts the weeks from now to the Monday of the proposed week.</p>
+  <div class="tablewrap"><table><thead><tr><th>Icon</th><th>Text</th><th>When</th></tr></thead><tbody>
+    <tr><td>Red clock</td><td>Inside the 4–8 weeks lead time – target 4–8 weeks</td><td>The proposed week starts sooner than the work type’s minimum lead time.</td></tr>
+    <tr><td>Red clock</td><td>Over 6 months in the past – target …</td><td>The proposed week started more than 26 weeks ago.</td></tr>
+    <tr><td>Green clock</td><td>Lead time OK – target 4–8 weeks</td><td>Otherwise.</td></tr>
+    <tr><td>Grey question mark</td><td>Work type not set up – ask an admin / No work type set</td><td>No Work Type Rule matches the quote’s work type.</td></tr>
+    <tr><td>Amber £</td><td>£300 a day, below the £500 minimum</td><td>Visit Value ÷ Planned Days at Site is below the rule’s minimum daily return.</td></tr>
+    <tr><td>Grey note</td><td>The WEA note from Settings</td><td>WEA visits (tested in N2).</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>TEST visits appear with the right totals</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Open <b>Unassigned jobs</b> with no filters. Read the pills at the top right and scroll to the bottom of the list.</li>
+        <li>If <b>Load next 50</b> shows, click it.</li>
+        <li>Type “TEST – Sam” in <b>Account</b>.</li>
+        <li>Compare with your TEST visits on the Visits board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Heading <b>Unassigned jobs</b> with “Every visit at Ready for Allocation, earliest proposed week first.” Pills show the number of visits, the total value, the planned days, and (when there are any) a red “N lead-time risk” and an amber “N low value”. Load next 50 adds 50 more rows. If more than 2,000 visits are waiting you also see “Showing the first 2,000 visits at Ready for Allocation. Narrow the filters to find others.” With the TEST filter: 13 rows (4 × L1, 4 × L2, 2 × L3, 2 × L4, 1 × L5), “13 visits”, the total of their Visit Value (with the example prices £2,400 + £600 + £900 + £3,600 + £700 = £8,200) and “13 planned days” (4 + 2 + 2 + 4 + 1). Columns: Visit / site (report number with the site underneath), Town / postcode, Account, Work type (service underneath), Proposed (e.g. “Week 3, 2027”), Days, Value, Flags. Rows are in order of proposed year, then week.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>Filters and filter errors</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>With Account “TEST – Sam”, type “Bradford” in <b>Town or postcode</b>, then “BD1”.</li>
+        <li>Clear it. Choose H&amp;S in <b>Service</b>, then WEA.</li>
+        <li>Choose <b>All services</b>. Type the L1 report number (e.g. 10234) in <b>Search visits</b>.</li>
+        <li>Clear it. Type 2027 in <b>Proposed year</b>, 3 in <b>From week</b> and 3 in <b>To week</b>.</li>
+        <li>Change Proposed year to 27.</li>
+        <li>Put 2027 back. Type 60 in From week.</li>
+        <li>Type 5 in From week and 3 in To week.</li>
+        <li>Clear every filter and type “TEST – Nobody” in Account.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: only the four Bradford visits, for both entries. Step 2: H&amp;S shows the 9 L1, L2 and L5 visits; WEA shows the two L4 visits. Step 3: only the four L1 visits. Step 4: only L1/2, L2/2 and L2/4. Step 5: red “Enter a 4-digit year, e.g. 2026” under Proposed year, “Fix the highlighted filter to update the list.” and the list stays as it was. Step 6: “Enter a week from 1 to 53”. Step 7: “Must be the same as or after From week” under To week. Step 8: “No visits waiting for allocation” with “When visits reach Ready for Allocation they’ll appear here. Clear the filters if you expected to see some.”</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>Lead-time flags</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Note the lead time of the H&amp;S work type (example 4–8 weeks) from Admin → Work types or your admin.</li>
+        <li>On the Visits board, set L1/4’s Proposed Week Number to 2 weeks after this week (e.g. this week is 47 → 49) and Proposed Calendar Year to this year.</li>
+        <li>In Unassigned jobs (Account “TEST – Sam”) hover over L1/4’s clock.</li>
+        <li>Set the week to 6 weeks after this week. Re-open Unassigned jobs and hover again.</li>
+        <li>Set Proposed Calendar Year to last year. Re-open and hover.</li>
+        <li>Clear Proposed Week Number. Re-open.</li>
+        <li>Put L1/4’s week and year back as they were.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 3: a red clock “Inside the 4–8 weeks lead time – target 4–8 weeks” and the lead-time risk pill up by one. Step 4: a green clock “Lead time OK – target 4–8 weeks” and the pill back down. Step 5: red “Over 6 months in the past – target 4–8 weeks”. Step 6: Proposed shows “Not set” and the row moves after the other visits of that year. A rule with a minimum of 0 and no maximum shows the target “As soon as possible”.</p></article>
+
+    <article class="test" data-id="C4"><header><span class="tid">C4</span><h4>Low day-value and missing work type flags</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>With Account “TEST – Sam”, hover over the £ icon on an L2 (Bradford) row. Check an L1 row.</li>
+        <li>Read the amber low value pill.</li>
+        <li>Click <b>Find consultant</b> on L2/4 and read the top of the panel.</li>
+        <li>Clear the filters and look for grey question marks in the Flags column; hover over one.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: L2 rows show an amber £ “£300 a day, below the £500 minimum” (£150 ÷ 0.5 days = £300). L1 rows (£600 ÷ 1 day = £600) have no £ icon. Step 2: the pill counts the low-value visits in the list (at least “4 low value” with the TEST filter). Step 3: an amber box “Day value £300 is below the £500 minimum for H&amp;S”; under Days · value “1 · £150” and “£500 a day minimum” (half-day visits are rounded up to a whole day when looking for free days). Step 4: a grey icon reading “Work type not set up – ask an admin” or “No work type set” where a visit has no matching rule. If there are none, you’ll see one in D7.</p></article>
+  </div>
+</section>
+
+<section id="wp-find" data-section="wp-find">
+  <div class="sechead"><h2>D. Find consultant: who is suggested</h2><span class="who">Allocator, with an allocation admin for setting changes</span></div>
+  <p><b>Find consultant</b> looks for consultants who are active, have a login, are allowed on the account, score high enough for the visit’s service and activity, and have enough free working days in a row inside the search window. The default search window runs from the Monday two weeks before the proposed week to the Sunday two weeks after it (never earlier than tomorrow). Up to 5 people show under <b>Top matches</b>; everyone else is listed under <b>Not suggested (N)</b> with one reason each.</p>
+  <div class="tablewrap"><table><thead><tr><th>Reason shown</th><th>When</th><th>Example detail</th></tr></thead><tbody>
+    <tr><td>Active</td><td>Active is unticked on the consultant</td><td>Marked inactive</td></tr>
+    <tr><td>Login</td><td>No login linked</td><td>No Login (monday.com account) linked</td></tr>
+    <tr><td>Account restriction</td><td>Someone has this company in Approved accounts, but not this consultant</td><td>TEST – Sam – Company is limited to approved consultants</td></tr>
+    <tr><td>New customer</td><td>The company has no visit at Visit Carried Out or later and the consultant scores 3</td><td>Scores 3; new customers need 4</td></tr>
+    <tr><td>Competency</td><td>Score below the minimum to lead (default 3)</td><td>Scores 2 for H&amp;S R – Risk Assessment; needs 3+</td></tr>
+    <tr><td>Fire level / First year</td><td>Fire risk assessments only (section E)</td><td>Fire level Foundation, needs Intermediate</td></tr>
+    <tr><td>Availability</td><td>No run of free working days long enough for the visit inside the window</td><td>No 1 free day in 04/01–07/02/2027 (leave or training)</td></tr>
+  </tbody></table></div>
+  <div class="callout">TEST – Sam – Company is in both TEST consultants’ Approved accounts, so every real consultant shows as “Account restriction” on your TEST visits. That is expected and keeps real people out of your tests. Bank holidays and closures count as unavailable days.</div>
+  <div class="callout warn">D7 changes a real work type rule, and D2, D4 and D5 change shared settings. Everyone is affected while you test. Agree a quiet time with the allocation team and put each value back straight away.</div>
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>Opening Find consultant and site allocation notes</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Unassigned jobs → Account “TEST – Sam” → <b>Find consultant</b> on L1/2.</li>
+        <li>Read the panel from top to bottom.</li>
+        <li>In <b>Site allocation notes</b> click <b>Add notes</b>, type “TEST – Sam – ring reception on arrival” and click <b>Save notes</b>.</li>
+        <li>Open TEST – Sam – Leeds Office on the Sites board and look at Allocation Notes.</li>
+        <li>Back in the app click <b>Edit</b>, then <b>Cancel</b>. Click Edit again, delete all the text and click Save notes.</li>
+        <li>Close the panel. Open Find consultant on L2/4, then on L5/1.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Title <b>Find consultant</b> with “TEST – Sam – Leeds Office – RN [report no]/2 · [work type]” underneath; while loading, “Checking skills, availability and distance…”. A grey summary: Proposed “Week 3, 2027”; Days · value “1 · £600” with “£500 a day minimum”; Service · activity “H&amp;S · R – Risk Assessment”; Currently “Unassigned”. A “New customer” chip (until D2). Notes start as “No notes for this site yet.”; after saving, your text shows with “Edited by [your name] on [today]” on a new line, and the site’s Allocation Notes column holds the same. After clearing, it is back to “No notes for this site yet.” and the column is empty. L2/4 shows the chip “Site avoids: Fri”; L5/1 shows “Scottish site – Scottish bank holidays apply”.</p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>New customers need a score of 4</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Find consultant on L1/2. Open <b>Not suggested</b>.</li>
+        <li><b>Admin</b> → <b>Settings</b> → <b>Allocation rules</b> → <b>New customers need score 4</b> → click so it shows Off → <b>Save settings</b>. Re-open L1/2.</li>
+        <li>Switch it back On and save.</li>
+        <li>On the Visits board set L1/4’s Visit Stage to “Visit Carried Out”. Re-open Find consultant on L1/2.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the “New customer” chip; Top matches shows only TEST – Sam – Lead (score 4); Not suggested lists “TEST – Sam – Support – New customer: Scores 3; new customers need 4” (Support is qualified for H&amp;S with no SMART scores, which counts as 3). There is no “Can deliver with support” section for new customers. Step 2: the chip still shows, but Support is now in Top matches. Step 4: the chip is gone and Support is in Top matches with “Qualified – no SMART scores yet”.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Inactive, no login and approved accounts</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Find consultant on L1/2. Read the line above Top matches and open Not suggested.</li>
+        <li><b>Admin</b> → <b>Consultants</b> → TEST – Sam – Support → untick <b>Active</b> → <b>Save changes</b>.</li>
+        <li>Re-open L1/2 and open Not suggested.</li>
+        <li>Tick Active again, set <b>Login (monday.com account)</b> to <b>Not linked</b> and save. Re-open L1/2.</li>
+        <li>Put the second tester’s login back and save.</li>
+        <li>As an allocator, click <b>Choose someone else</b> on L1/2 and scroll to a real consultant.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “This account is limited to: TEST – Sam – Lead, TEST – Sam – Support.” and every real consultant with a login listed as “Account restriction: TEST – Sam – Company is limited to approved consultants”. Step 2: a box “Deactivate TEST – Sam – Support?” – “They’ll be hidden from workload and matching and can’t be allocated. Their history is kept, and you can reactivate them later.” – click <b>Deactivate</b>; the form shows “Inactive consultants are hidden from workload and matching. Their history is kept.” and the list shows an Inactive badge. Step 3: “Active: Marked inactive”. Step 4: the hint “No Login (monday.com account) linked — they can’t be allocated until one is added.” and, in Find consultant, “Login: No Login (monday.com account) linked”. Step 6: real consultants show amber “Not approved for this account”.</p></article>
+
+    <article class="test" data-id="D4"><header><span class="tid">D4</span><h4>Minimum score to lead</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Admin → Competencies → TEST – Sam – Lead → set H&amp;S R to “2 – With support”.</li>
+        <li>Find consultant on L1/2 and open Not suggested.</li>
+        <li>Admin → Settings → <b>Matching</b> → <b>Minimum score to lead</b> → 2 → Save settings. Re-open L1/2.</li>
+        <li>Set Minimum score to lead back to 3 and save. Set Lead’s H&amp;S R back to “4 – Can teach others”.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: “TEST – Sam – Lead – Competency: Scores 2 for H&amp;S R – Risk Assessment; needs 3+”. Lead also appears under “Can deliver with support” (see F5). Step 3: Lead is back in Top matches with the competency line “Score 2 – with support” worth +3. Support’s competency line throughout reads “Qualified – no SMART scores yet” worth +5. Typing 5 or 0 in Minimum score to lead shows “Enter a number from 1 to 4”.</p></article>
+
+    <article class="test" data-id="D5"><header><span class="tid">D5</span><h4>Leave and the search window</h4><span class="tag">Admin</span><span class="role">Allocator</span></header>
+      <ol>
+        <li>Add Annual Leave for TEST – Sam – Lead from 04/01/2027 to 05/02/2027 (My availability as Lead, or Admin → Leave &amp; training).</li>
+        <li>Find consultant on L1/2 (proposed week 3 of 2027) and open Not suggested.</li>
+        <li>Change the leave to end 15/01/2027. Re-open L1/2.</li>
+        <li>Change the leave to end 22/01/2027. Re-open L1/2.</li>
+        <li>Admin: Settings → <b>Search window (weeks either side)</b> → 0 → save. Re-open L1/2.</li>
+        <li>Set the search window back to 2 and save. Delete the leave.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: “TEST – Sam – Lead – Availability: No 1 free day in 04/01–07/02/2027 (leave or training)”. Step 3: Lead in Top matches, “free from 18/01/2027”, with the reason “Free from 18/01” worth +9 (18/01 is the 11th of 25 possible start days: 15 × (1 − 10/24) = 8.75, rounded). Step 4: free from 25/01/2027 and +6. Step 5: “Availability: No 1 free day in 18/01–24/01/2027 (leave or training)” – the window is now just the proposed week.</p></article>
+
+    <article class="test" data-id="D6"><header><span class="tid">D6</span><h4>Site avoid days and Scottish sites</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Add Annual Leave for TEST – Sam – Lead from Monday 04/01/2027 to Thursday 07/01/2027.</li>
+        <li>Find consultant on L2/4 (Bradford, avoids Fridays, week 3 of 2027). Read Lead’s card.</li>
+        <li>Find consultant on L1/2 (Leeds, no avoid days). Read Lead’s card.</li>
+        <li>Delete the leave.</li>
+        <li>Find consultant on L5/1 (Edinburgh).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the chip “Site avoids: Fri” and Lead “free from 11/01/2027” – Friday 08/01 is skipped. Step 3: Lead free from 08/01/2027. Step 5: the chip “Scottish site – Scottish bank holidays apply”; no offered date is a Scottish bank holiday (for example 30/11/2026 or 04/01/2027 if they fall inside the window).</p></article>
+
+    <article class="test" data-id="D7"><header><span class="tid">D7</span><h4>Visits that can’t be matched</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Admin → Work types → click the H&amp;S work type used on L1. Write down its Activity, Service and exact name.</li>
+        <li>Set Activity to “Not allocated” and click Save changes. As an allocator, open Find consultant on L1/2. Don’t allocate.</li>
+        <li>Put the Activity back. Set Service to “Not set” and save. Re-open L1/2.</li>
+        <li>Put the Service back. Add “ X” to the end of the work type name and save. Re-open L1/2 and look at the L1 rows in Unassigned jobs.</li>
+        <li>Put the name back exactly as it was and save. Re-open L1/2.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: an amber box “[work type] is set to "Not allocated" in Admin → Work types, so it can’t be auto-matched. Use "Choose someone else" to allocate it manually.”; no Top matches heading, but Choose someone else is still there. Step 3: “Work type "[work type]" has no service set – ask an admin.” Step 4: “Work type "[work type]" is not set up – ask an admin.”, and the TEST L1, L2 and L5 rows show the grey question mark “Work type not set up – ask an admin”. Step 5: suggestions are back to normal.</p></article>
+
+    <article class="test" data-id="D8"><header><span class="tid">D8</span><h4>When suggestions can’t load</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Open Unassigned jobs with Account “TEST – Sam”.</li>
+        <li>Turn off your Wi-Fi (or unplug the network cable), then click <b>Find consultant</b> on L1/2.</li>
+        <li>Wait up to 20 seconds.</li>
+        <li>Reconnect and click <b>Try again</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The spinner with “Checking skills, availability and distance…” stops within 20 seconds and a red box shows “We couldn’t load suggestions. Try again.” with a <b>Try again</b> button. The app never spins for more than 20 seconds – a slow answer gets the same message. After reconnecting, Try again loads the suggestions.</p></article>
+  </div>
+</section>
+
+<section id="wp-fire" data-section="wp-fire">
+  <div class="sechead"><h2>E. Fire risk assessments</h2><span class="who">Allocation admin and allocator</span></div>
+  <p>A visit counts as a fire risk assessment (FRA) when its work type rule has Service Fire and an Activity starting with R. For FRAs, Find consultant works out the BS 8674 level the site needs and leaves out consultants below it (their level comes from the Fire row in Competencies). Consultants whose <b>Fire assessor since</b> date is within the last 12 months only get repeat FRAs – sites that already have an FRA at Visit Carried Out or later.</p>
+  <div class="tablewrap"><table><thead><tr><th>Site setting</th><th>Level needed (default)</th><th>Shown as</th></tr></thead><tbody>
+    <tr><td>Over 11m / BSA ticked</td><td>Advanced</td><td>(over 11m / BSA)</td></tr>
+    <tr><td>Fire Building Type “HMO / flats / student housing”</td><td>Intermediate</td><td>(HMO / flats / student housing)</td></tr>
+    <tr><td>“Complex”</td><td>Intermediate</td><td>(complex building)</td></tr>
+    <tr><td>“Office / shop / school”</td><td>Foundation</td><td>(office / shop / school)</td></tr>
+    <tr><td>“Other”</td><td>Intermediate</td><td>(other building type)</td></tr>
+    <tr><td>Blank</td><td>Intermediate</td><td>(building type not set) plus a warning</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>Required BS 8674 level comes from the site</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Find consultant on L3/1 (FRA at Leeds Office). Read the fire box at the top.</li>
+        <li>Admin → Settings → <b>Fire risk assessments</b> → <b>Office / shop / school</b> → Intermediate → save. Re-open L3/1.</li>
+        <li>Set it back to Foundation and save.</li>
+        <li>On the Sites board tick the over-11m / BSA box on TEST – Sam – Leeds Office. Re-open L3/1. Untick it.</li>
+        <li>Change the site’s Fire Building Type to “HMO / flats / student housing”, re-open; then clear it, re-open; then set it back to “Office / shop / school”.</li>
+        <li>Open Find consultant on L1/2 (not an FRA).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “Needs: Foundation (office / shop / school)” and “First FRA at this site – first-year assessors aren’t suggested.”; TEST – Sam – Lead (Fire level Foundation) is in Top matches. Step 2: “Needs: Intermediate (office / shop / school)” and Lead moves to Not suggested with “Fire level: Fire level Foundation, needs Intermediate”. Step 4: “Needs: Advanced (over 11m / BSA)”. Step 5: “Needs: Intermediate (HMO / flats / student housing)”, then “Needs: Intermediate (building type not set)” with the amber warning “Building type not set – check before allocating”. Step 6: no fire box.</p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Fire level and first-year assessor rules</h4><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Admin → Competencies → TEST – Sam – Lead → Fire row → <b>Fire level</b> → None. Find consultant on L3/1.</li>
+        <li>Set the Fire level back to Foundation.</li>
+        <li>Admin → Consultants → Lead → <b>Fire assessor since</b> → a date 3 months ago → Save changes. Re-open L3/1.</li>
+        <li>On the Visits board set L3/2’s Visit Stage to “Visit Carried Out”. Re-open L3/1.</li>
+        <li>Clear Fire assessor since on Lead and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “Fire level: No Fire level recorded, needs Foundation”. Step 3: the form hint reads “Within the last 12 months = first-year assessor (repeat FRAs only).” and Find consultant shows “First year: First-year assessor – repeat FRAs only”. Step 4: the fire box says “Repeat FRA – first-year assessors can be suggested.” and Lead is back in Top matches. A date more than 12 months ago never blocks.</p></article>
+
+    <article class="test" data-id="E3"><header><span class="tid">E3</span><h4>Changing the fire level for one visit</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Admin first: set TEST – Sam – Lead’s Fire level to Intermediate.</li>
+        <li>Find consultant on L3/1. Open the <b>Change level</b> drop-down.</li>
+        <li>Choose Advanced.</li>
+        <li>Choose Intermediate. Click <b>Select</b> on Lead.</li>
+        <li>Click <b>Allocate</b> with the reason box empty.</li>
+        <li>Type “TEST – complex layout” in “Reason for changing the level (required)”. Click Allocate, then <b>Confirm</b>, then <b>Done</b>.</li>
+        <li>Check L3/1 on the Visits board. Admin: set Lead’s Fire level back to Foundation.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: options “Use site level (Foundation)”, Intermediate and Advanced. Step 3: suggestions reload; “Needs: Advanced (changed from Foundation)”; the reason box appears; Lead is under Not suggested with “Fire level: Fire level Intermediate, needs Advanced”. Step 4: Lead back in Top matches; the allocate box reads “Allocate TEST – Sam – Lead on [date] · Fire level Intermediate”. Step 5: “Give a reason for changing the fire level (above).” Step 7: Fire Level Required = Intermediate, Assigned Consultant = you, Visit Stage Allocated, and an update ending “Fire level required: Intermediate (changed: TEST – complex layout).” (Every FRA allocation writes Fire Level Required, even without a change.)</p></article>
+  </div>
+</section>
+
+<section id="wp-score" data-section="wp-score">
+  <div class="sechead"><h2>F. Match scores and support options</h2><span class="who">Allocator, with an allocation admin for setting changes</span></div>
+  <p>Each Top match has a score from 0 to 100 and a <b>Why this score</b> list. Six factors add up to the score; each is rounded to a whole point. Penalties are then taken off, and the total is kept between 0 and 100. Weights below are the defaults in Settings → Scoring weights.</p>
+  <div class="tablewrap"><table><thead><tr><th>Line</th><th>Weight</th><th>How the points are worked out</th><th>Examples</th></tr></thead><tbody>
+    <tr><td>Distance – “N miles from base”</td><td>25</td><td>(1 − miles ÷ 150) × 25, never below 0. No base or unknown site = half.</td><td>0 miles → 25; 30 → 20; 75 → 13; 160 → 0; “No base location set” → 13</td></tr>
+    <tr><td>Earliest slot – “Free from dd/mm”</td><td>15</td><td>First possible start day = 15, last = 0, in proportion between.</td><td>First day → 15; 10 working days later in a 25-day window → 9</td></tr>
+    <tr><td>Workload – “N free days in the next 4 weeks”</td><td>20</td><td>Free days in the next 20 working days ÷ 20 × 20.</td><td>14 free → 14; 20 free → 20</td></tr>
+    <tr><td>Stay-aways</td><td>10</td><td>Site within 100 miles → 10. Further → 10 ÷ (1 + hotel stays in the last 90 days).</td><td>0 stays → 10; 1 → 5; 2 → 3</td></tr>
+    <tr><td>Pairing – “Pairs with [site] on dd/mm/yyyy”</td><td>20</td><td>Another of their visits in the proposed week within 15 miles → 20, else 0.</td><td>Bradford visit 9 miles away → 20</td></tr>
+    <tr><td>Competency</td><td>10</td><td>Score 4 → 10; 3 or “qualified, no SMART scores” → 5; 2 or less → 3.</td><td>“Score 4 – can teach others” → 10</td></tr>
+    <tr><td>Multi-disciplined (penalty)</td><td>−10</td><td>Scores 3+ (or qualified) in 3 or more services.</td><td>H&amp;S, Fire, Noise → −10</td></tr>
+    <tr><td>Commercial team (penalty)</td><td>−15</td><td>Commercial Team ticked on the consultant.</td><td>−15</td></tr>
+    <tr><td>Target</td><td>none</td><td>Information only: value booked this month ÷ this month’s target.</td><td>£600 of £5,000 → 12%</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>The six-factor score adds up</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Make sure TEST – Sam – Lead has H&amp;S R 4, no leave and nothing booked around January 2027.</li>
+        <li>Find consultant on L1/2. Read every line under <b>Why this score</b> on Lead’s card and add up the points.</li>
+        <li>Do the same on Support’s card.</li>
+        <li>Check the order and numbering of the cards.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Lead: “0 miles from base” +25 (base and site are both LS1 4AP); “Free from 04/01” +15 (the first day of the window, if you test before then); “N free days in the next 4 weeks” +N (with a weight of 20 the points equal the free days); “Within 100 miles – no stay-away needed” +10; “No nearby visit that week” 0; “Score 4 – can teach others” +10; and a target line with no points. The big number = 60 + N (80 when all 20 days are free). Support: the same except “Qualified – no SMART scores yet” +5, so 55 + its free days. Cards are sorted highest first, numbered “1.”, “2.”, each with “Jamie's team · free from 04/01/2027”.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>Pairing with a nearby visit</h4><span class="tag">Admin</span><span class="role">Allocator</span></header>
+      <ol>
+        <li>Find consultant on L2/2 (Bradford, week 3 of 2027). Select TEST – Sam – Lead → Allocate → Confirm → Done.</li>
+        <li>Consultant workload → January 2027 → click Lead’s teal day for L2/2 → <b>Change dates</b> → New start date 18/01/2027, Days on site 1 → <b>Save new dates</b>.</li>
+        <li>Find consultant on L1/2. Read Lead’s pairing line and score.</li>
+        <li>Admin: Settings → <b>Pairing radius (miles)</b> → 5 → save. Re-open L1/2.</li>
+        <li>Set the pairing radius back to 15 and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: a message “Moved to 18/01/2027.” Step 3: Lead shows “Pairs with TEST – Sam – Bradford Unit on 18/01/2027” +20 (Leeds to Bradford is about 9 miles) and the score is 20 higher than in F1 (Workload may drop by 1 if 18/01 is in the next 4 weeks). Support still shows “No nearby visit that week” 0. Step 4: Lead back to “No nearby visit that week” 0.</p></article>
+
+    <article class="test" data-id="F3"><header><span class="tid">F3</span><h4>Stay-aways for far-away sites</h4><span class="tag">Admin</span><span class="role">Allocator</span></header>
+      <ol>
+        <li>Find consultant on L5/1 (Edinburgh). Read Lead’s distance and stay-away lines.</li>
+        <li>On the Visits board, on L1/4 (Visit Carried Out) set Assigned Consultant to your login (Lead), Planned Start Date to a weekday 3 weeks ago, and tick Hotel to Be Booked?.</li>
+        <li>Re-open L5/1.</li>
+        <li>Admin: Settings → <b>Stay-away distance (miles)</b> → 200 → save. Re-open L5/1.</li>
+        <li>Set it back to 100 and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: about “162 miles from base” worth 0 (150 miles or more scores nothing) and “0 stay-aways in the last 90 days” +10. Step 3: “1 stay-away in the last 90 days” +5. Step 4: “Within 200 miles – no stay-away needed” +10.</p></article>
+
+    <article class="test" data-id="F4"><header><span class="tid">F4</span><h4>Penalties, target line and work restrictions</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Find consultant on L1/2 and note Lead’s score.</li>
+        <li>Admin → Consultants → Lead → Services qualified for → click Noise → Save changes. Re-open L1/2.</li>
+        <li>On the Consultant Skills &amp; Availability board tick Commercial Team on TEST – Sam – Lead (it isn’t in the Admin form). Re-open.</li>
+        <li>Admin → Settings → <b>Multi-disciplined from N services</b> 4 and <b>Commercial team penalty</b> 5 → save. Re-open.</li>
+        <li>Put them back to 3 and 15, untick Noise and Commercial Team.</li>
+        <li>Admin → Consultants → Lead → <b>Work restrictions</b> “TEST – no ladders” → save. Re-open L1/2 as an allocator, then as a read-only user.</li>
+        <li>Read Lead’s target line.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: “Multi-disciplined – kept free for other services” −10 (H&amp;S, Fire and Noise make 3 services) and the score 10 lower. Step 3: also “Commercial team – allocated after others” −15, shown in amber. Step 4: the multi-disciplined line is gone and the commercial line is −5. Step 6: an amber pill “TEST – no ladders” on Lead’s card for allocators only. Step 7: “N% of this month's target booked” = Visit Value of Lead’s visits with a day in this calendar month ÷ this month’s target (£5,000 from B3; if a month has no target row, the annual target ÷ 12), e.g. £600 → 12%. It has no points.</p></article>
+
+    <article class="test" data-id="F5"><header><span class="tid">F5</span><h4>With support and shadowing options</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Admin → Competencies → Lead → H&amp;S R → “2 – With support”.</li>
+        <li>Find consultant on L1/2.</li>
+        <li>Admin → Settings → <b>Suggest “with support” options</b> → Off → save. Re-open. Then switch it back On and save.</li>
+        <li>Set Lead’s H&amp;S R to “1 – In training”. Re-open.</li>
+        <li>Set Lead’s H&amp;S R back to “4 – Can teach others”.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: Top matches shows only Support. A section <b>Can deliver with support</b> lists “TEST – Sam – Lead with TEST – Sam – Support (score 3) supporting”, “Free [dates]” and a <b>Select both</b> button. If no score-3 consultant were free on all those days it would read “ – no supporting consultant free those days” with no button. Step 3: the section disappears when Off. Step 4: “Shadowing opportunity (not offered as lead): TEST – Sam – Lead” and no with-support entry. For new customers the with-support section never shows.</p></article>
+  </div>
+</section>
+
+<section id="wp-allocate" data-section="wp-allocate">
+  <div class="sechead"><h2>G. Allocate</h2><span class="who">Allocator, with an allocation admin for setting changes</span></div>
+  <p>Click <b>Select</b> on a suggestion (or <b>Select both</b>, or pick someone under <b>Choose someone else</b>), check the allocate box, click <b>Allocate</b>, then <b>Confirm</b>. The app checks again for clashes before saving. Leave, training, bank holidays, closures and other bookings block the allocation. Going over the weekly booked-days limit or booking a day the site avoids needs a reason.</p>
+  <div class="tablewrap"><table><thead><tr><th>Where</th><th>What changes when you allocate</th></tr></thead><tbody>
+    <tr><td>Visits board</td><td>Assigned Consultant = lead (and supporter); Visit Stage = Allocated; Planned Start Date = first day; Planned Days at Site = number of days, only if different; Last Allocated = today; 🟣Times Re-allocated +1 on a re-allocation; Fire Level Required (FRAs only); Report Deadline Date = last day + SLA days; SLA Flag = On track.</td></tr>
+    <tr><td>Visit updates</td><td>“Allocated to … by [you]. Days: …” plus any reasons; a second update for the optional visit note.</td></tr>
+    <tr><td>Notifications</td><td>Each person: “You've been allocated [site] – [work type], week N. Please plan it within 1 week.”</td></tr>
+    <tr><td>Samples by Day</td><td>Sample Date moves to the matching working day; Consultant is set; Capacity Request and Lab Response are cleared on moved days.</td></tr>
+    <tr><td>Allocation history</td><td>One record (used in sections L and M).</td></tr>
+  </tbody></table></div>
+  <div class="callout">The report deadline uses the first match in this order: a Report SLA Rules row for the company and work type; a row for the work type with no company; a row for the quote’s work category; the company’s “SLA Report Delivery (days)”; then <b>Default report SLA (days)</b> in Settings (10). The deadline is the last planned day plus that many calendar days, weekends included.</div>
+  <div class="tests">
+    <article class="test" data-id="G1"><header><span class="tid">G1</span><h4>Allocate a TEST visit</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Unassigned jobs → Account “TEST – Sam”. Note the pills.</li>
+        <li>Find consultant on L1/1. Click <b>Select</b> on TEST – Sam – Lead.</li>
+        <li>Read the allocate box. In “Note for this visit (optional) – posted as an update” type “TEST – park at the rear”.</li>
+        <li>Click <b>Allocate</b>. Read the message, then click <b>Back</b>.</li>
+        <li>Click Allocate again, then <b>Confirm</b>. Read the green box, then click <b>Done</b>.</li>
+        <li>Open L1/1 on the Visits board: check the columns and Updates. Check your monday.com notifications.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the button changes to <b>Selected</b> and the card is outlined. Step 3: “Allocate TEST – Sam – Lead on [date]”, with the site notes box above. Step 4: “Allocate TEST – Sam – Lead to TEST – Sam – Leeds Office, [date]? They’ll get a monday notification.” with Back and Confirm; Back saves nothing. Step 5: “Allocated to TEST – Sam – Lead for [date]” and “Report due [date + 10 days] (10-day SLA)”. After Done the row has gone and the pills drop by 1 visit, £600 and 1 planned day. Step 6: Assigned Consultant = you; Visit Stage Allocated; Planned Start Date = the date; Planned Days at Site still 1; Last Allocated today; 🟣Times Re-allocated unchanged; Report Deadline Date = date + 10; SLA Flag “On track”. Updates: “Allocated to TEST – Sam – Lead by [your name]. Days: [date].” and “Allocation note from [your name]: TEST – park at the rear”. Notification: “You've been allocated TEST – Sam – Leeds Office – [work type], week [proposed week]. Please plan it within 1 week.”</p></article>
+
+    <article class="test" data-id="G2"><header><span class="tid">G2</span><h4>Report deadline and where the SLA comes from</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>After G1, note L1/1’s Planned Start Date and Report Deadline Date (no SLA rule, no company SLA yet).</li>
+        <li>On Companies set TEST – Sam – Company’s “SLA Report Delivery (days)” to 15. In Consultant workload click L1/1’s teal day → <b>Change dates</b> → same start date, Days on site 1 → <b>Save new dates</b>.</li>
+        <li>On Report SLA Rules add “TEST – Sam – SLA rule” linked to the TEST company, with L1’s work type and 5 SLA days. Change dates again (same date).</li>
+        <li>Delete the TEST rule and clear the company’s SLA days. Admin → Settings → <b>Default report SLA (days)</b> → 12 → save. Change dates again.</li>
+        <li>Set the default back to 10 and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: Report Deadline Date = visit day + 10 calendar days (e.g. Wednesday 16/12/2026 → Saturday 26/12/2026). Step 2: + 15 days. Step 3: + 5 days (the rule wins over the company). Step 4: + 12 days. SLA Flag reads “On track” after each save.</p></article>
+
+    <article class="test" data-id="G3"><header><span class="tid">G3</span><h4>Allocate with a supporting consultant</h4><span class="tag">Two people</span><span class="role">Allocator</span></header>
+      <ol>
+        <li>Admin: set Lead’s H&amp;S R to “2 – With support”.</li>
+        <li>Find consultant on L1/2 → under <b>Can deliver with support</b> click <b>Select both</b>.</li>
+        <li>Click Allocate → Confirm → Done.</li>
+        <li>Check L1/2 on the Visits board. Both testers check their notifications.</li>
+        <li>Admin: set Lead’s H&amp;S R back to “4 – Can teach others”.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the button reads <b>Selected</b>; the box says “Allocate TEST – Sam – Lead (with TEST – Sam – Support supporting) on [date]”. Step 3: “Allocated to TEST – Sam – Lead and TEST – Sam – Support for [date]”. Step 4: Assigned Consultant shows both people; the update reads “Allocated to TEST – Sam – Lead (lead) with TEST – Sam – Support (support) by [your name]. Days: [date].”; both testers get the “You've been allocated…” notification.</p></article>
+
+    <article class="test" data-id="G4"><header><span class="tid">G4</span><h4>Choose someone else outside the top matches</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Admin: set Lead’s H&amp;S R to “1 – In training”.</li>
+        <li>Find consultant on L2/4 → <b>Choose someone else</b>.</li>
+        <li>Type “zzz” in “Search by name or team”. Then type “TEST – Sam”.</li>
+        <li>Click <b>Select</b> next to TEST – Sam – Support. Then click Select next to TEST – Sam – Lead.</li>
+        <li>Click Allocate with the reason box empty.</li>
+        <li>Type “TEST – shadowing then leading” in “Why this person? (required)”. Allocate → Confirm → Done.</li>
+        <li>Check L2/4’s updates. Admin: set Lead’s H&amp;S R back to 4.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: every active consultant with a login, A to Z, each with a competency score circle, “[team] · Free from [date]” (or amber “No N free days in …”), and amber “Not approved for this account” on real consultants; <b>Hide</b> closes the list. Step 3: “No consultants match “zzz”.” Step 4: Support is a top match, so no reason box appears; Lead (score 1) shows the reason box. Step 5: “Give a short reason for choosing someone outside the top matches.” Step 7: the update reads “Allocated to TEST – Sam – Lead by [your name]. Days: [date]. Chosen outside the suggested matches: TEST – shadowing then leading.” The date is not a Friday.</p></article>
+
+    <article class="test" data-id="G5"><header><span class="tid">G5</span><h4>Clash checks block the allocation</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Add Annual Leave for Lead from 18/01/2027 to 19/02/2027 (L1/3’s whole window).</li>
+        <li>Find consultant on L1/3 (week 5 of 2027). Open Not suggested.</li>
+        <li>Choose someone else → Select TEST – Sam – Lead.</li>
+        <li>Type “TEST – clash check” as the reason. Allocate → Confirm.</li>
+        <li>Check L1/3 on the Visits board. Delete the leave.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: “Availability: No 1 free day in 18/01–21/02/2027 (leave or training)”. Step 3: Lead’s line is amber “No 1 free day in 18/01–21/02/2027”. Step 4: the box comes back with red “TEST – Sam – Lead is on leave or training on 18/01. Pick other days or another consultant.” Step 5: nothing changed – still Ready for Allocation, no consultant, no update. Other blocks read “… is unavailable on dd/mm (bank holiday or office closure) …” and “… is already booked at [site] …”.</p></article>
+
+    <article class="test" data-id="G6"><header><span class="tid">G6</span><h4>Weekly booked-days warning</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Admin → Settings → <b>Weekly booked-days warning</b> → 1 → save.</li>
+        <li>Find consultant on L4/2 (WEA, 2 days). Select TEST – Sam – Support. Allocate → Confirm.</li>
+        <li>Click Allocate with the new reason box empty.</li>
+        <li>Type “TEST – short week” in “Reason for going over the weekly limit”. Allocate → Confirm → Done.</li>
+        <li>Check L4/2’s updates. Set the warning back to 5 and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: nothing saves; the box shows amber “TEST – Sam – Support would have 2 booked days in week N (warning level 1). Give a reason to go ahead.” and a reason box. Step 3: “Give a reason for going over the weekly limit.” Step 4: saved. Step 5: the update ends “Over the weekly booked-days warning: TEST – short week.” and Planned Days at Site stays 2.</p></article>
+
+    <article class="test" data-id="G7"><header><span class="tid">G7</span><h4>Lab capacity and sample dates</h4><span class="role">Allocator, Lab user</span></header>
+      <ol>
+        <li>On Samples by Day, find L4/1’s day rows and note each day’s Pot total and Sample Date. On Lab Capacity, note the Pot Baseline Max per Day and Warning Level (e.g. 80 and 20).</li>
+        <li>Find consultant on L4/1. On Support’s card read <b>Lab capacity left on these days</b> and hover over a chip.</li>
+        <li>Optional, with the lab: add a Lab Capacity row “TEST – Sam – override”, Type Date override, Sample Category Pot, Max per Day 25, Warning Level 20, Dates = Support’s first offered day, Active ticked. Re-open L4/1. Change Max per Day to 10 and re-open. Delete the row.</li>
+        <li>Select Support → Allocate → Confirm → Done.</li>
+        <li>Check L4/1’s Samples by Day rows.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: one line per sample day with the date and a chip per category, e.g. “Pot 68 left” = 80 − samples already booked that day by other visits − this visit’s 12. The tooltip reads “0 booked + 12 for this visit of 80”. Green when more than the Warning Level is left, amber at or below it, red at 0 or less, grey “no limit” with no maximum. It’s information only. Step 3: “Pot 13 left” in amber, then “Pot -2 left” in red. Step 5: Day 1’s Sample Date = the first allocated day and Day 2’s = the second (weekends and closures skipped); Consultant = Support’s login; Capacity Request and Lab Response are empty on rows whose date moved.</p></article>
+  </div>
+</section>
+
+<section id="wp-change" data-section="wp-change">
+  <div class="sechead"><h2>H. Re-allocate, change dates and return to queue</h2><span class="who">Allocator</span></div>
+  <p>Visits at Allocated have three buttons: <b>Change dates</b>, <b>Re-allocate</b> and <b>Return to queue</b>. You find them by clicking a teal day on <b>Consultant workload</b>, in a consultant’s profile under Upcoming visits, and in the <b>Not yet planned</b> list on Allocation history.</p>
+  <div class="tablewrap"><table><thead><tr><th>Action</th><th>What happens</th><th>Counted in history as</th></tr></thead><tbody>
+    <tr><td>Re-allocate</td><td>Opens Find consultant titled <b>Re-allocate</b>. A reason is always asked for. 🟣Times Re-allocated goes up by 1 only when the consultant changes.</td><td>A re-allocation (or an allocation if the same people are chosen)</td></tr>
+    <tr><td>Change dates</td><td>Same consultant(s), new days. Weekends, England &amp; Wales bank holidays and closures are skipped. Same clash checks as allocating.</td><td>An allocation</td></tr>
+    <tr><td>Return to queue</td><td>Back to Ready for Allocation; consultant and Planned Start Date cleared; sample dates cleared.</td><td>Returned to queue</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="H1"><header><span class="tid">H1</span><h4>Re-allocate to a different consultant</h4><span class="tag">Two people</span><span class="role">Allocator</span></header>
+      <ol>
+        <li>Consultant workload → the month of L1/1’s day → click Lead’s teal day for L1/1.</li>
+        <li>Click <b>Re-allocate</b>.</li>
+        <li>Click Select on TEST – Sam – Support.</li>
+        <li>Click Allocate without choosing a reason.</li>
+        <li>Choose “Customer change” in “Reason for re-allocation…”, type “TEST – client moved” in “Note (optional)”. Allocate → Confirm → Done.</li>
+        <li>Check L1/1 on the Visits board. The second tester checks notifications.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: a pop-up with “TEST – Sam – Leeds Office – RN [report no]/1 · [work type]”, “[date] · Allocated” and the three buttons. Step 2: the panel is titled <b>Re-allocate</b> and Currently shows “TEST – Sam – Lead”. Step 3: the box has the reason drop-down (Consultant unavailable, Customer change, Competency, Geography, Other) and a note box. Step 4: “Choose a reason for re-allocating this visit.” Step 6: Assigned Consultant = Support; 🟣Times Re-allocated = 1; Last Allocated today; update “Re-allocated from TEST – Sam – Lead to TEST – Sam – Support by [your name]. Reason: Customer change – TEST – client moved. Days: [date].”; Support gets the notification; the booking moves to Support’s row on Consultant workload.</p></article>
+
+    <article class="test" data-id="H2"><header><span class="tid">H2</span><h4>Re-allocate to the same consultant</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Consultant workload → click the name TEST – Sam – Support → under <b>Upcoming visits</b> find L1/1 → <b>Re-allocate</b>.</li>
+        <li>Select Support again. Choose reason “Other”, note “TEST – same person”. Allocate → Confirm → Done.</li>
+        <li>Check L1/1 on the Visits board.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>The screen still asks for a reason. 🟣Times Re-allocated stays at 1. The update reads “Dates changed for TEST – Sam – Support by [your name]. Note: TEST – same person. Days: [date].” Allocation history counts it as an allocation, not a re-allocation.</p></article>
+
+    <article class="test" data-id="H3"><header><span class="tid">H3</span><h4>Change dates skips weekends and bank holidays</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Click L1/1’s teal day (Support’s row) → <b>Change dates</b>.</li>
+        <li>New start date 24/12/2026, <b>Days on site</b> 2. Read the dialog.</li>
+        <li>Click <b>Save new dates</b>.</li>
+        <li>Check L1/1 on the Visits board.</li>
+        <li>Change dates again to an ordinary weekday with Days on site 1.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: title <b>Change dates</b>, “[visit] keeps the same consultant. Weekends, bank holidays and closures are skipped; this doesn’t count as a re-allocation.” and “Starting 24/12/2026.” Step 3: the message “Moved to 24/12/2026, 29/12/2026.” – 25 and 28 December are bank holidays and 26–27 are the weekend. Step 4: Planned Start Date 24/12/2026; Planned Days at Site 2; Last Allocated today; Report Deadline Date 08/01/2027 (29/12 + 10); update “Dates changed for TEST – Sam – Support by [your name]. Days: 24/12/2026, 29/12/2026.”; Support gets a fresh “You've been allocated…” notification. Step 5: Planned Days at Site back to 1. If you test after Christmas, use 25/03/2027 → “25/03/2027, 30/03/2027” (Easter).</p></article>
+
+    <article class="test" data-id="H4"><header><span class="tid">H4</span><h4>Avoid days need a reason; Scottish bank holidays block</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Allocate L2/1 (Bradford, avoids Fridays) to TEST – Sam – Lead through Find consultant.</li>
+        <li>Click its teal day → Change dates → New start date Friday 04/12/2026 (or any coming Friday), 1 day → Save new dates.</li>
+        <li>Type “ok” in the reason box and click <b>Go ahead</b>.</li>
+        <li>Type “TEST – client asked for Friday” and click Go ahead.</li>
+        <li>Allocate L5/1 (Edinburgh) to Lead. Change dates → 30/11/2026 (or 04/01/2027 if that has passed) → Save new dates.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: an amber box “The site avoids Friday (04/12). Give a reason to go ahead.”, a “Reason to go ahead” box, and the button now reads <b>Go ahead</b>. Step 3: “Give a short reason to go ahead.” Step 4: “Moved to 04/12/2026.”; L2/1’s update includes “Booked on a day the site avoids: TEST – client asked for Friday.” Step 5: red “30/11 is a Scottish bank holiday at this site. Pick other days.” and nothing changes on the visit.</p></article>
+
+    <article class="test" data-id="H5"><header><span class="tid">H5</span><h4>Return a visit to the queue</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Click L2/1’s teal day → <b>Return to queue</b>.</li>
+        <li>Click Return to queue with the Reason box empty.</li>
+        <li>Type “TEST – client postponed” and click Return to queue.</li>
+        <li>Check Unassigned jobs (Account “TEST – Sam”) and L2/1 on the Visits board.</li>
+        <li>Optional: return L4/1 the same way and check its Samples by Day rows.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: dialog <b>Return to queue</b> – “[visit] will go back to Ready for Allocation. The consultant and planned start date will be cleared.” Step 2: “Give a short reason for returning this visit.” Step 3: the message “[visit] is back in the allocation queue.” Step 4: L2/1 is back in the list; Visit Stage Ready for Allocation, Assigned Consultant and Planned Start Date empty; update “Returned to the allocation queue by [your name] (was TEST – Sam – Lead). Reason: TEST – client postponed.” Step 5: each day row’s Sample Date and Consultant are cleared.</p></article>
+  </div>
+</section>
+
+<section id="wp-map" data-section="wp-map">
+  <div class="sechead"><h2>I. Map</h2><span class="who">Allocator (anyone can view)</span></div>
+  <p>The <b>Map</b> shows one week at a time: visits at Ready for Allocation proposed for that week, every consultant’s base, and – when you pick a consultant – their booked visits. A visit of half a day or less that is within the pairing radius (15 miles) of another visit that week gets a ring as a pairing opportunity. Sites are placed by their latitude and longitude, or by postcode.</p>
+  <div class="tests">
+    <article class="test" data-id="I1"><header><span class="tid">I1</span><h4>Week map, pairing rings and Find consultant from a marker</h4><span class="tag">Admin</span><span class="role">Allocator</span></header>
+      <ol>
+        <li>Open <b>Map</b>. Read the header and legend.</li>
+        <li>Use the arrows to go to Week 5, 2027.</li>
+        <li>Click the Leeds marker, then the Bradford marker.</li>
+        <li>In the Leeds pop-up click <b>Find consultant</b>, then close the panel without allocating.</li>
+        <li>Admin: Settings → Pairing radius 5 → save. Reload the map at week 5. Put it back to 15 and save.</li>
+        <li>Find a week with no unassigned visits.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “Map – Unassigned visits, a consultant’s booked visits and everyone’s base, for one week.”; it opens on the week 4 weeks from today, shown as “Week N, YYYY” with “w/c dd/mm/yyyy”; the legend lists Unassigned, Booked for selected consultant, Consultant base and Pairing opportunity; small dark squares mark consultant bases (the TEST consultants are in Leeds). Step 2: “Week 5, 2027” and “w/c 01/02/2027”, with markers at Leeds (L1/3) and Bradford (L2/3). Step 3: “TEST – Sam – Leeds Office”, “Leeds · 1 day” and a Find consultant button; “TEST – Sam – Bradford Unit”, “Bradford · 0.5 days · pairing opportunity” and a coloured ring on the Bradford marker. Step 4: Find consultant opens for L1/3 (allocating from here reloads the map). Step 5: no ring at 5 miles. Step 6: “No visits waiting for allocation in week N. Try another week using the arrows above.”</p></article>
+
+    <article class="test" data-id="I2"><header><span class="tid">I2</span><h4>A consultant’s bookings and sites with no location</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Map → Week 3, 2027. In the consultant drop-down (“No consultant selected”) choose TEST – Sam – Lead.</li>
+        <li>Move to a week where Lead has nothing booked.</li>
+        <li>On the Sites board clear the postcode, latitude and longitude on TEST – Sam – Bradford Unit. Reload the map at Week 5, 2027.</li>
+        <li>Put the Bradford postcode back.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: other markers and bases fade; Lead’s base becomes a larger teal square; Lead’s booked visits that week show as larger teal dots (e.g. the Bradford visit moved to 18/01/2027 in F2). Step 2: “TEST – Sam – Lead has no visits booked in week N.” Step 3: the Bradford marker is gone and the text reads “Not shown on the map because the site has no coordinates or recognised postcode — add them to the site record in monday.com: TEST – Sam – Bradford Unit.”</p></article>
+  </div>
+</section>
+
+<section id="wp-workload" data-section="wp-workload">
+  <div class="sechead"><h2>J. Consultant workload</h2><span class="who">Allocator (anyone can view)</span></div>
+  <p><b>Consultant workload</b> shows one month as a grid of working days for every active consultant, in whole Monday-to-Friday weeks. Each day is booked (teal), half day, unavailable (hatched leave or training), BH (bank holiday or closure) or free. The last column shows the value booked that month against the monthly target. Click a name to open the consultant’s profile.</p>
+  <div class="tests">
+    <article class="test" data-id="J1"><header><span class="tid">J1</span><h4>Monthly grid, filters and day types</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Open <b>Consultant workload</b>. Read the header and legend.</li>
+        <li>Use the arrows to go to December 2026, then click <b>Today</b>.</li>
+        <li>Go to January 2027. Find TEST – Sam – Lead’s row.</li>
+        <li>Add one day of Annual Leave for Lead on 11/01/2027 and reload the page.</li>
+        <li>Choose “Jamie's team” in Team. Choose WEA in Service, then H&amp;S.</li>
+        <li>Click one of Lead’s teal days. Then click a teal day for a visit that isn’t at Allocated (any consultant).</li>
+        <li>Delete the leave.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “Consultant workload – Bookings, leave and value against target, month by month.” with the legend Booked, Half day, Unavailable, BH = bank holiday / closure, Free. Step 2: in December every row shows “BH” on the 25th and 28th; <b>Today</b> only appears when you are not on the current month. Step 3: January starts with “w/c 28/12” (1 January is a Friday), with BH on 28/12 and 01/01; 18/01 shows a half-teal cell (the half-day Bradford visit). Step 4: 11/01 is hatched. Step 5: only that team’s consultants; WEA lists Support but not Lead; H&amp;S lists both. Inactive consultants never appear. Step 6: the pop-up shows the visit, date and stage with Change dates, Re-allocate and Return to queue; for a visit at another stage: “Only visits at Allocated can be re-allocated or returned here.”</p></article>
+
+    <article class="test" data-id="J2"><header><span class="tid">J2</span><h4>Value against target and the “No consultant set” row</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Consultant workload → January 2027. Read Lead’s last column. Click each of Lead’s teal days and add up the Visit Value of each visit (once per visit) from the Visits board.</li>
+        <li>Go to July 2028.</li>
+        <li>On the Visits board set L1/3 to Visit Stage “Allocated” with a Planned Start Date on a weekday this month and Assigned Consultant empty. Re-open Consultant workload on this month.</li>
+        <li>Put L1/3 back to Ready for Allocation and clear its Planned Start Date.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “£X / £5,000 (N%)” with a progress bar. X is the total Visit Value of Lead’s visits with any day in January, each counted once – e.g. L1/2 £600 + L2/2 £150 + L2/4 £150 = £900, “£900 / £5,000 (18%)”. A shared visit counts in full for both lead and supporter. The bar turns green at 100% or more. Step 2: “No target set” (no Consultant Targets row for that month). Step 3: a top row “No consultant set – Booked, but Assigned Consultant is empty” with “1” on that day and “1 visit-days” in the last column.</p></article>
+
+    <article class="test" data-id="J3"><header><span class="tid">J3</span><h4>Consultant profile</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Consultant workload → click the name TEST – Sam – Lead.</li>
+        <li>Read every section.</li>
+        <li>Click <b>Change dates</b> on one upcoming visit, then Cancel.</li>
+        <li>Open the profile of a consultant with no login linked (if there is one).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Title “TEST – Sam – Lead”, “Jamie's team · based in …”. <b>Competencies</b>: rows for Fire and H&amp;S with S, M, A, R, T circles coloured by score (H&amp;S R = 4 in dark green), and on the Fire row chips “BS 8674: Foundation”, “LFA / Validator: No”, “Tall buildings: No”, “Fire assessor since: Not recorded”; the key “0 Not in training · 1 In training · 2 With support · 3 Independent · 4 Can teach others”. <b>Upcoming visits</b>: Lead’s visits at Allocated, earliest first, each with Change dates, Re-allocate and Return to queue. <b>Restrictions</b>: “TEST – no ladders” (from F4) or “No work restrictions recorded.” <b>Approved accounts</b>: a TEST – Sam – Company chip. <b>Upcoming leave and training</b> or “Nothing booked.” <b>Monthly targets · July 2026 – June 2027</b>: £5,000 in each month with the current month highlighted. Step 4: “No Login (monday.com account) linked. They can’t be allocated until one is added in Admin → Consultants.”, and on the grid the same consultant shows “No Login (monday.com account) linked” under their name.</p></article>
+  </div>
+</section>
+
+<section id="wp-availability" data-section="wp-availability">
+  <div class="sechead"><h2>K. Availability and My availability</h2><span class="who">Consultant and allocator</span></div>
+  <p><b>Availability</b> shows, for each service and the next 6 months, how many free working days the consultants who can lead that service have, after leave, bank holidays and booked visits. <b>My availability</b> is each consultant’s own calendar: they add, edit and delete time off, which is saved as an entry under their row on Consultant Skills &amp; Availability and stops matching from booking those days. Allocators can open anyone’s calendar and the Team month view.</p>
+  <div class="tests">
+    <article class="test" data-id="K1"><header><span class="tid">K1</span><h4>Availability by service</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Open <b>Availability</b>. Read the header, legend and grid.</li>
+        <li>Click the H&amp;S cell for next month.</li>
+        <li>Add 3 weekdays of Annual Leave for TEST – Sam – Lead next month. Reload and click the same cell.</li>
+        <li>Tick <b>Include consultants with support (score 2)</b>. Then choose “Jamie's team” in the team box.</li>
+        <li>Delete the leave.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “Availability – Free working days for consultants who can lead each service, after leave, bank holidays and booked visits.”; one row per service and six month columns starting this month (this month counts from tomorrow). Each cell shows free days in large type and “N booked” (or “No one”), coloured green for 50%+ free, amber for 20–49% and red under 20% (free days ÷ all working days for those consultants). Step 2: a side panel “H&amp;S · [Mon YYYY]” with “N free days, N booked · N% free”, “Lists consultants with a competency score of 3 or higher for H&amp;S.”, and each person as “[team] · score N” with “N free / N booked” – Lead shows score 4 and Support score 3. Consultants with no login are greyed out with “No login – can’t be allocated”. Step 3: Lead’s free days and the cell total drop by 3. Step 4: the panel text says “score of 2 or higher”, and the team filter limits the people counted.</p></article>
+
+    <article class="test" data-id="K2"><header><span class="tid">K2</span><h4>My availability: add, edit and delete time off</h4><span class="role">Consultant</span></header>
+      <ol>
+        <li>Signed in with the login linked to TEST – Sam – Lead, open <b>My availability</b>.</li>
+        <li>Go to next month. Press on a Monday and drag to the Wednesday of the same week.</li>
+        <li>Choose Training, type “TEST – course” in Note, click <b>Save</b>.</li>
+        <li>Open the Lead row on Consultant Skills &amp; Availability and look at its entries.</li>
+        <li>Click the green entry. Set To earlier than From and click Save. Fix the dates and save.</li>
+        <li>Click the entry again and click <b>Delete</b>.</li>
+        <li>Click <b>Add time off</b>, then close the dialog.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “My availability – Booked visits, leave, training and bank holidays. Click a day, or drag across days, to add time off.”; a Monday–Sunday calendar with booked visits (site names), “Bank holiday” tags and today circled. Step 2: dialog <b>Add time off</b> – “Saved to the consultant’s Unavailable list in monday.com. Matching won’t book these days.” – with Annual Leave chosen and From/To set to the dragged days. Step 3: “Training · TEST – course” on all three days. Step 4: a new entry named “Training” with Type Training, the dates and the note. Step 5: <b>Edit time off</b> and “The end date must be on or after the start date.” Step 6: the entry disappears straight away (there is no confirm box) and is gone from the board. Step 7: the dialog opens on today’s date (or the 1st of another month).</p></article>
+
+    <article class="test" data-id="K3"><header><span class="tid">K3</span><h4>Allocator views and logins with no consultant row</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>As an allocator, open My availability. In the consultant drop-down choose TEST – Sam – Support.</li>
+        <li>Add one day of time off for Support, then delete it.</li>
+        <li>Click <b>Team month</b>. Change the team box.</li>
+        <li>Ask an allocator who has no consultant row, then a read-only user with no consultant row, to open My availability.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the heading changes to “TEST – Sam – Support” with their calendar. Step 2: the entry is saved under Support’s row. Step 3: heading “Team month”, the first team pre-selected, a grid of days per consultant with codes V = Visit, AL = Annual leave, T = Training, O = Other, BH = Bank holiday, and weekends faded. Step 4: both see “Ask an admin to link your login”. The allocator also reads “You don’t have a consultant row yet. Choose a consultant above to view theirs.” with a “Choose a consultant” drop-down; the read-only user reads “Your monday.com login isn’t linked to a consultant on Consultant Skills &amp; Availability yet.”</p></article>
+  </div>
+</section>
+
+<section id="wp-history" data-section="wp-history">
+  <div class="sechead"><h2>L. Allocation history</h2><span class="who">Allocator (anyone can view)</span></div>
+  <p><b>Allocation history</b> shows how often visits move between consultants over the last 30 or 90 days, the latest allocation notes, and a <b>Not yet planned</b> list of visits still at Allocated more than 7 days after they were allocated. Re-allocation rate = re-allocations ÷ all allocations; returns to the queue are counted separately.</p>
+  <div class="tests">
+    <article class="test" data-id="L1"><header><span class="tid">L1</span><h4>Re-allocation rate, breakdowns and notes</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>Open <b>Allocation history</b> on <b>Last 30 days</b>. Write down the figures.</li>
+        <li>Click <b>Last 90 days</b>.</li>
+        <li>Re-allocate L1/1 from Support back to Lead with reason Geography. Open Allocation history again.</li>
+        <li>Scroll to <b>Allocation notes (latest 30)</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “Allocation history – How often visits are moved between consultants.”; a tile <b>Re-allocation rate</b> with a percentage and “X of Y allocations · Z returned to queue”; <b>By team</b> and <b>By consultant</b> lists showing “N% · re/total” (by lead consultant), or “No allocations in this period.” Step 3: X and Y both go up by 1 – e.g. 2 of 10 (20%) becomes 3 of 11 (27%); TEST – Sam – Lead’s line in By consultant changes. Change dates and same-consultant re-picks count as allocations. Step 4: G1’s entry “TEST – Sam – Leeds Office · TEST – Sam – Lead” with “[your name] · [date]” and “TEST – park at the rear”, and H4’s “Booked on a day the site avoids: TEST – client asked for Friday”.</p></article>
+
+    <article class="test" data-id="L2"><header><span class="tid">L2</span><h4>Not yet planned list</h4><span class="role">Allocator</span></header>
+      <ol>
+        <li>On the Visits board set L3/1’s Last Allocated to 8 days ago (L3/1 was allocated in E3).</li>
+        <li>Open Allocation history and scroll to <b>Not yet planned</b>.</li>
+        <li>Open the Dashboard and read <b>Allocated, not planned</b>.</li>
+        <li>Back on Not yet planned, click <b>Change dates</b> on L3/1, keep the same date and save.</li>
+        <li>If there are more than 25 rows, click <b>Load more</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 2: “Visits still at Allocated more than 7 days after allocation.” and a row “TEST – Sam – Leeds Office | TEST – Sam – Lead | [8 days ago] | Week N, YYYY” under Site, Consultant, Allocated on and Proposed, with Change dates, Re-allocate and Return to queue (allocators only). Oldest first, 25 at a time. Step 3: the tile includes L3/1. Step 4: the row disappears (saving resets Last Allocated to today). With nothing overdue the list shows “Everything allocated has been planned”.</p></article>
+  </div>
+</section>
+
+<section id="wp-dashboard" data-section="wp-dashboard">
+  <div class="sechead"><h2>M. Dashboard</h2><span class="who">Any user</span></div>
+  <p>The <b>Dashboard</b> is the first page. It pulls the queue, workload, targets and history into tiles and panels. Click <b>Refresh</b> to recalculate.</p>
+  <div class="tests">
+    <article class="test" data-id="M1"><header><span class="tid">M1</span><h4>Headline tiles match the rest of the app</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Open <b>Dashboard</b>. Read the six tiles.</li>
+        <li>Compare them with Unassigned jobs (no filters, contract review rule Off), the Not yet planned list and Allocation history (Last 30 days).</li>
+        <li>Allocate or return one TEST visit, come back and click <b>Refresh</b>.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>“Dashboard – Allocation, workload and targets across all visits and consultants.” and “Updated HH:mm, dd/mm/yyyy”. <b>Waiting for allocation</b> = the visits pill on Unassigned jobs, with “£… · N planned days” underneath. <b>Lead-time risk</b> (“Inside lead time or 6+ months overdue”) = the red pill. <b>Allocated, not planned</b> (“At Allocated for more than 7 days”) = the Not yet planned count. <b>Re-allocation rate</b> = the 30-day figure, with the 90-day figure underneath. <b>This month</b> = booked value ÷ this month’s targets, with “£X of £Y target · [Month YYYY]”. <b>Utilisation, next 4 weeks</b> = “X of Y available days booked”. After Refresh, Waiting for allocation moves by 1 and the Updated time changes.</p></article>
+
+    <article class="test" data-id="M2"><header><span class="tid">M2</span><h4>Panels and Data to fix</h4><span class="role">Any user</span></header>
+      <ol>
+        <li>Read <b>Queue by service</b> and <b>Demand vs capacity, next 12 weeks</b>.</li>
+        <li>Read <b>Lead times by service</b> and compare the H&amp;S target with the H&amp;S rules in Admin → Work types.</li>
+        <li>In <b>Team performance</b> click “Jamie's team”.</li>
+        <li>Read <b>Visit pipeline</b>, <b>Allocations per week</b> and <b>Re-allocation reasons</b>.</li>
+        <li>Add Annual Leave for Lead this week, click Refresh and read <b>Who’s away</b>. Delete the leave.</li>
+        <li>In <b>Data to fix</b>, click <b>Work types with no rule</b> (as an admin).</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: a chart and table (Service, Visits, Value, At risk) whose H&amp;S row includes your TEST visits; the capacity chart ends with “Enough free consultant-days in every week.” or “Short of capacity (red): w/c …”. Step 2: Service, Target (lowest minimum to highest maximum across that service’s rules, e.g. “2–8 weeks”), Next free slot (red when beyond the target maximum, or “No competent consultant” / “None in the next year”) and Actual last 90 days (“N weeks (N visits)” or “No allocations”). Step 3: the team row opens to list its consultants, including TEST – Sam – Lead, under Month booked, Month target, Month %, Year to date booked, Year to date target, Year %, Utilisation (4 wks) and Re-allocation (90 days). Step 4: eight stages from Ready for Allocation to Published; this week’s bar includes your allocations; reasons include “Customer change” and “Geography”. Step 5: “TEST – Sam – Lead”, “Jamie's team · Annual Leave” and the dates. Step 6: Admin opens on the Work types tab. Data to fix also lists Consultants without a Login (monday.com account), Consultants with no base location, Consultants qualified for a service with no SMART scores (“Scored as 3 until added: … TEST – Sam – Support …”), Consultants with no target this month, Queue visits with no work type and Sites with no postcode or coordinates.</p></article>
+  </div>
+</section>
+
+<section id="wp-settings" data-section="wp-settings">
+  <div class="sechead"><h2>N. Settings</h2><span class="who">Allocation admin</span></div>
+  <p><b>Admin</b> → <b>Settings</b> holds the allocation admins and allocators (section A), matching settings, scoring weights, allocation rules, contract review visits, fire levels (E1), bank holidays and closures, and the WEA note. Each setting shows its default. Nothing changes until you click <b>Save settings</b> and confirm. Most settings are already tested where they are used: Minimum score to lead (D4), Suggest “with support” options (F5), Search window (D5), Pairing radius (F2, I1), Weekly booked-days warning (G6), Default report SLA (G2), New customers need score 4 (D2), Multi-disciplined and commercial penalties (F4), Stay-away distance (F3).</p>
+  <div class="callout warn">Settings apply to everyone straight away. Write down each value before you change it and put it back as soon as the test is done.</div>
+  <div class="tests">
+    <article class="test" data-id="N1"><header><span class="tid">N1</span><h4>Scoring weights must add up to 100</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Settings → <b>Scoring weights</b>. Read the six boxes and the total line.</li>
+        <li>Change <b>Distance</b> from 25 to 35. Click Save settings.</li>
+        <li>Change <b>Workload</b> from 20 to 10. Click Save settings and confirm.</li>
+        <li>Find consultant on L1/2 and read Lead’s distance and workload lines.</li>
+        <li>Type 150 in Distance and click Save settings. Then clear the box and click Save settings.</li>
+        <li>Put Distance back to 25 and Workload to 20 and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: Distance 25, Earliest slot 15, Workload 20, Stay-aways 10, Pairing 20, Competency 10 and green “Total: 100”. Step 2: red “Total: 110 — adjust so they add up to 100.” and, on saving, “The six scoring weights must add up to 100.” Nothing is saved. Step 3: green “Total: 100”, the box “Save settings?”, then <b>Saved</b>. Step 4: “0 miles from base” +35, and workload points = free days ÷ 20 × 10 (20 free days → +10). Step 5: the box turns red with “Enter a number from 0 to 100” (or “Enter a value” when empty) and saving shows “Distance weight: enter a number from 0 to 100.”</p></article>
+
+    <article class="test" data-id="N2"><header><span class="tid">N2</span><h4>Contract review visits and the WEA note</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Settings → <b>Contract review visits</b>. Note the current Rule description. Switch <b>Leave matching visits out of the queue</b> On, leave <b>Word to look for</b> empty and save.</li>
+        <li>Type the L2 report number (e.g. 10235) in Word to look for and save.</li>
+        <li>Open Unassigned jobs with Account “TEST – Sam”.</li>
+        <li>Switch the rule Off, clear the word and save.</li>
+        <li>Settings → <b>WEA</b> → <b>Lab capacity note</b>: change it to “TEST – Sam – check the lab diary” and save. In Unassigned jobs hover over the note icon on an L4 row.</li>
+        <li>Clear the note and save; check the L4 rows. Then put back “Check lab capacity manually before allocating” and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: after confirming, red “Enter the word to look for in visit names, or switch the contract review rule off.” beside the save button. Step 2: Saved. Step 3: no L2 visits (any visit whose name contains the word, ignoring capitals, is hidden) and the pills drop by their count. Step 4: L2 visits are back. Step 5: the grey note icon on L4 (WEA) rows reads “TEST – Sam – check the lab diary”. Step 6: no note icon while the note is empty.</p></article>
+
+    <article class="test" data-id="N3"><header><span class="tid">N3</span><h4>Bank holidays and extra closure dates</h4><span class="tag">Admin</span><span class="role">Allocation admin</span></header>
+      <ol>
+        <li>Settings → <b>Bank holidays &amp; closures</b>. Read the text.</li>
+        <li>In <b>Extra closure dates</b> pick 07/12/2026 and click <b>Add</b>. Pick the same date again.</li>
+        <li>Save settings. Open Consultant workload on December 2026.</li>
+        <li>On a TEST visit at Allocated, click Change dates → start 07/12/2026, 1 day → Save new dates.</li>
+        <li>Switch <b>Northern Ireland bank holidays</b> On and save. Open Consultant workload on March 2027.</li>
+        <li>Click the “07/12/2026 ×” chip to remove it, switch Northern Ireland Off and save.</li>
+      </ol>
+      <p class="expect"><strong>You should see</strong>Step 1: “England &amp; Wales bank holidays block everyone. Scottish bank holidays block Scottish sites and Scotland-based consultants. Lists come from gov.uk and refresh daily.” and “No extra closures.” Step 2: a chip “07/12/2026 ×”; <b>Add</b> is greyed out for an empty or already-listed date. Step 3: every consultant shows BH on 7 December. Step 4: “Moved to 08/12/2026.” – the closure is skipped, and Find consultant never offers 07/12. Step 5: BH on 17/03/2027 (St Patrick’s Day) for everyone. If gov.uk can’t be reached you see “We couldn’t reach gov.uk, so the last saved bank holiday list is being used.”</p></article>
+  </div>
+</section>
+
+<section id="wp-help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>Why does the app say “Workload Map” at the top?</dt><dd>That is the Workload Planner’s on-screen name. They are the same app.</dd>
+    <dt>I’ve just been made an allocator but I still see the read-only message.</dt><dd>The app checks your access when it opens. Reload the app (or close and reopen it in monday.com).</dd>
+    <dt>A yellow bar says “We couldn’t check your access, so the app is read-only for now.”</dt><dd>The access check failed, usually because of the connection. Click <b>Try again</b>. Until it works you can only view.</dd>
+    <dt>Why isn’t a consultant suggested?</dt><dd>Open <b>Not suggested</b> at the bottom of Find consultant. Each person has one reason: Active, Login, Account restriction, New customer, Competency, Fire level, First year or Availability.</dd>
+    <dt>Why does every real consultant say “Account restriction” on my TEST visits?</dt><dd>Your TEST company is in the TEST consultants’ Approved accounts. When any consultant has an account there, only those consultants can be allocated to it. This keeps real consultants out of your tests.</dd>
+    <dt>Why does a half-day visit show “1” under Days in Find consultant?</dt><dd>Days are rounded up to whole days when looking for free days. Planned Days at Site on the board stays as 0.5 unless you change the number of days.</dd>
+    <dt>The lead-time flag is red although the visit is exactly at the minimum lead time.</dt><dd>The app counts from now to the Monday of the proposed week. Part-way through a week, a visit exactly 4 weeks ahead is slightly under 4 weeks away.</dd>
+    <dt>The green box says “Couldn’t send … The allocation is saved …”.</dt><dd>The consultant, dates and stage were saved, but an update or notification didn’t go. It is recorded in the history. Tell the consultant directly.</dd>
+    <dt>Can I undo an allocation?</dt><dd>There is no undo. Use <b>Return to queue</b> (back to Ready for Allocation) or <b>Re-allocate</b> (needs a reason).</dd>
+    <dt>Does Change dates count as a re-allocation?</dt><dd>No. It keeps the same consultant, doesn’t change 🟣Times Re-allocated, and counts as an allocation in the history. It does reset Last Allocated to today and re-sends the “You've been allocated…” notification.</dd>
+    <dt>Where do bank holidays come from?</dt><dd>From gov.uk, refreshed daily. England &amp; Wales holidays and Settings closures block everyone; Scottish holidays block Scottish sites and Scotland-based consultants; Northern Ireland holidays only when switched on in Settings.</dd>
+    <dt>The map background is blank.</dt><dd>You’ll see “The background map couldn’t load. Markers are still accurate.” The markers are still in the right places.</dd>
+    <dt>A banner says “Some bookings may be missing…”.</dt><dd>There were too many bookings to read in one go, so free-day counts may be overstated. Narrow the view (team, month) and tell the project team.</dd>
+    <dt>Who gets a notification when I allocate?</dt><dd>The lead and any supporting consultant, through their linked monday.com login. That is why TEST visits must only go to TEST consultants.</dd>
+    <dt>I changed a setting and everyone was affected.</dt><dd>Settings are shared. Put the original value back and let the allocation team know.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-wp-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity Consulting monday.com UAT results – Workload Planner',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
