@@ -116,9 +116,9 @@ dl.faq dd{margin:.2rem 0 0;max-width:68ch}
 <style>
 /* Tab bar shared by both pages */
 .tabs{border-bottom:1px solid var(--line);background:var(--bg)}
-.tabs .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:6px;padding:10px 0;overflow-x:auto}
-.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:14px;white-space:nowrap;color:var(--accent);font-size:.85rem;text-transform:uppercase}
-.tabs a{padding:8px 14px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .92rem var(--display);white-space:nowrap}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
 .tabs a:hover{background:var(--accent-soft)}
 .tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
 /* Training page */
@@ -163,7 +163,7 @@ a:hover .d-app{stroke-width:2}
 </style>
 </head>
 <body>
-<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity · monday.com</span><a href="training.html">How it all fits together</a><a href="./" aria-current="page">UAT test guide</a></div></nav>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./" aria-current="page">End-to-end UAT</a><a href="uat-quote-builder.html">Quote Builder</a><a href="uat-approval-portal.html">Approval Portal</a><a href="uat-order-processor.html">Order Processor</a><a href="uat-workload-planner.html">Workload Planner</a><a href="uat-sample-planner.html">Sample Planner</a><a href="uat-renewal-hub.html">Renewal Hub</a></div></nav>
 <div class="wrap">
 <nav class="toc" aria-label="Contents">
   <p class="label">Contents</p>
@@ -781,7 +781,7 @@ a:hover .d-app{stroke-width:2}
     <dt>I can’t allocate in the Workload Planner.</dt>
     <dd>Ask an admin to add you under Admin → Settings → Allocators.</dd>
     <dt>I can’t submit an order in the Order Processor.</dt>
-    <dd>Check the <b>Checks</b> tab. It lists what is missing, usually an invoicing detail on the opportunity or a first visit week on a line. If every check passes, ask an admin to add you to the processing team in Settings.</dd>
+    <dd>Check the <b>Checks</b> panel on the order page. It lists what is missing, usually an invoicing detail on the opportunity or a first visit week on a line. If every check passes, ask an admin to add you to the processing team in Settings.</dd>
     <dt>A reminder or SLA flag didn’t change.</dt>
     <dd>Date-based automations run once each morning. Check the next day, and make sure the item has an Owner or Assigned Consultant to notify.</dd>
     <dt>Where are invoices raised?</dt>
