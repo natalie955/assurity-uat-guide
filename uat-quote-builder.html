@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Quote Builder UAT Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./">End-to-end UAT</a><a href="uat-quote-builder.html" aria-current="page">Quote Builder</a><a href="uat-approval-portal.html">Approval Portal</a><a href="uat-order-processor.html">Order Processor</a><a href="uat-workload-planner.html">Workload Planner</a><a href="uat-sample-planner.html">Sample Planner</a><a href="uat-renewal-hub.html">Renewal Hub</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#qb-start">Before you start</a></li>
+    <li><a href="#qb-opps">A. Find an opportunity and check its details <span class="count" data-count="qb-opps"></span></a></li>
+    <li><a href="#qb-gate">B. Link the company and pass the “Create quote” check <span class="count" data-count="qb-gate"></span></a></li>
+    <li><a href="#qb-wizard">C. Build a proposal: recipient, work types, frequency and sites <span class="count" data-count="qb-wizard"></span></a></li>
+    <li><a href="#qb-costing">D. Cost and price each line <span class="count" data-count="qb-costing"></span></a></li>
+    <li><a href="#qb-save">E. Review, save and check the boards <span class="count" data-count="qb-save"></span></a></li>
+    <li><a href="#qb-manage">F. Manage saved quotes: edit, revise, approve and the dashboard <span class="count" data-count="qb-manage"></span></a></li>
+    <li><a href="#qb-generate">G. Generating the proposal document <span class="count" data-count="qb-generate"></span></a></li>
+    <li><a href="#qb-contents">H. Checking what is in the document <span class="count" data-count="qb-contents"></span></a></li>
+    <li><a href="#qb-review">I. Review and regenerate <span class="count" data-count="qb-review"></span></a></li>
+    <li><a href="#qb-send">J. Sending a proposal <span class="count" data-count="qb-send"></span></a></li>
+    <li><a href="#qb-bundle">K. Sending several proposals in one email <span class="count" data-count="qb-bundle"></span></a></li>
+    <li><a href="#qb-admin-letter">L. Admin access, letter template and signatures <span class="count" data-count="qb-admin-letter"></span></a></li>
+    <li><a href="#qb-admin-content">M. Admin: paragraphs, specifications, test methods and library <span class="count" data-count="qb-admin-content"></span></a></li>
+    <li><a href="#qb-admin-settings">N. Admin: quote email, required fields and settings <span class="count" data-count="qb-admin-settings"></span></a></li>
+    <li><a href="#qb-help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · Quote Builder</p>
+  <h1>Quote Builder: in-depth test script</h1>
+  <p class="lead">Every part of the Quote Builder: finding opportunities, building, costing and saving proposals, what lands on the boards, editing, revising and approving quotes, the quotes dashboard, proposal documents, sending, and the admin screens.</p>
+  <p class="byline">Prepared by Mutherboard · November 2026 · Version 1 · 113 tests · 4–5 hours · For: Sales and account managers, the Quotes and Orders team, and a Content admin for the admin tests</p>
+</header>
+
+<section id="qb-start">
+  <h2>Before you start</h2>
+  <p>The Quote Builder is where every quote for Assurity Consulting is built. You pick an opportunity, build a proposal made of lines (one line = one work type at one site), cost and price each line, and save it. Each line becomes a row on the <b>Quotes &amp; Invoices</b> board, linked to the opportunity, the site and the contact. From there the proposal document is produced, sent to the client and, once approved, the deal is marked Won.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>A monday.com login that can open the Quote Builder app and the Opportunities, Companies, People, Sites and Quotes &amp; Invoices boards.</li>
+    <li>Your own email address. All test contacts use it, so nothing is ever sent to a client.</li>
+    <li>A Content admin you can call on (for B5, and to tell you how the settings below are set). Only Content admins see the <b>Admin</b> button.</li>
+    <li>Settings an admin must have in place (Admin → <b>Settings</b> unless shown): <b>Default hourly rates</b>; <b>Fire tier default hours (per visit)</b> filled for at least one tier, with at least one tier left at 0 if possible; the quote validity period (30 days unless changed); <b>Required fields to quote</b> left at the default (Source, Account, Contact, Owner); at least one “Always include” paragraph in <b>Standard Paragraphs</b>.</li>
+    <li>The second part of this script (proposal documents, review and sending). Several tests in section F need a proposal that has been generated, reviewed or sent. Send only to your own email address.</li>
+    <li>A small PDF file to use as a pretend purchase order.</li>
+  </ul>
+  <h3>Test data</h3>
+  <ul>
+    <li>Replace “Sam” with your own first name everywhere below.</li>
+    <li>Companies board: add <b>TEST – Sam – Riverside Offices Ltd</b> and <b>TEST – Sam – Other Company Ltd</b>.</li>
+    <li>People board: add <b>TEST – Sam – Main Contact</b> and <b>TEST – Sam – Second Contact</b>. Give both your own email address and link both to TEST – Sam – Riverside Offices Ltd in their 🔗Account column.</li>
+    <li>Opportunities board: add <b>TEST – Sam – Quote Builder</b> with only the Owner set (you). Leave 🔗Account, Contacts, Source, Expected Close Date and Deal Value empty – section B fills them in through the app.</li>
+    <li>Opportunities board: add <b>TEST – Sam – Other Deal</b> with Owner = you, 🔗Account = TEST – Sam – Other Company Ltd, Contacts = TEST – Sam – Main Contact and any Source.</li>
+    <li>Sites are created during the tests: <b>TEST – Sam – Warehouse</b> (C1), <b>TEST – Sam – Site A</b> and <b>TEST – Sam – Site B</b> (C9).</li>
+    <li>Write down every Quote No and Site Code the app gives you – later tests refer back to them.</li>
+  </ul>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only, separately for each app’s script. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date check that runs each morning. Set things up as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="qb-opps" data-section="qb-opps">
+  <div class="sechead"><h2>A. Find an opportunity and check its details</h2><span class="who">Sales, account managers</span></div>
+  <p>The app opens on a list of opportunities. Click one to see its details (company, contacts, owner and a few fields you can edit) and its quotes. Anything you change here is saved straight back to the Opportunities board.</p>
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>Open the app and see your own opportunities</h4><span class="role">Sales</span></header>
+      <ol><li>Open the <b>Quote Builder</b> app from the left-hand menu in monday.com.</li><li>Look at the heading, the buttons at the top right and the list.</li></ol>
+      <p class="expect"><strong>You should see</strong>The heading <b>Opportunity Quoting Engine</b> with “Select an opportunity to manage quotes”. The <b>My opportunities</b> switch is on and the search box says <b>Search my opportunities by name…</b>. Only opportunities where you are the Owner are listed, most recently changed first. Each shows the company, “Owner: your name”, the stage and, if set, the deal value in £. Both TEST opportunities are in the list. Top right there is a <b>Dashboard</b> button; the <b>Admin</b> button appears only if you are a Content admin.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>Search and filter everyone’s opportunities</h4><span class="role">Sales</span></header>
+      <ol><li>Switch off <b>My opportunities</b>.</li><li>Type a colleague’s full name (someone who owns opportunities) in the search box.</li><li>Clear the search, then click a stage chip, for example <b>Proposal</b>.</li><li>With the chip still selected, type <i>zzzz</i> in the search box.</li><li>Clear the search, click <b>All stages</b> and scroll to the bottom of the list.</li></ol>
+      <p class="expect"><strong>You should see</strong>With the switch off, the search box says <b>Search by opportunity or owner name…</b> and everyone’s opportunities are listed. Searching a colleague’s name lists the opportunities they own (plus any whose name contains the text). Each stage chip shows a count; clicking one highlights it and shows only that stage. <i>zzzz</i> shows <b>No opportunities match</b>. <b>All stages</b> brings the full list back. If there are more than 25 opportunities, a <b>Load more</b> button at the bottom adds the next 25.</p></article>
+
+    <article class="test" data-id="A3"><header><span class="tid">A3</span><h4>Open your TEST opportunity</h4><span class="role">Sales</span></header>
+      <ol><li>Switch <b>My opportunities</b> back on and search for <i>TEST – Sam</i>.</li><li>Click <b>TEST – Sam – Quote Builder</b>.</li><li>Look at the fields under the heading and the Quotes area below.</li><li>Click <b>Back to Opportunities</b>, then open the same opportunity again.</li></ol>
+      <p class="expect"><strong>You should see</strong>The heading is the opportunity name. You see <b>Company (Account)</b> (a search box, because no company is linked yet), <b>Contacts</b> showing <b>None</b>, <b>Owner</b> (your name), <b>Assigned Consultant</b> showing <b>None on this deal’s quotes</b>, <b>Signing preference</b> greyed out with <b>Link an account first</b>, then <b>Description</b>, <b>Source</b>, <b>Close By Date</b> and <b>Opportunity Stage</b>. Below is <b>Quotes</b> with an <b>Open Quotes &amp; Invoices board</b> button, a <b>Create quote</b> button and “No quotes yet – Create your first quote to get started”. <b>Back to Opportunities</b> returns you to the list.</p></article>
+
+    <article class="test" data-id="A4"><header><span class="tid">A4</span><h4>An empty Close By Date is pre-filled, and Discard undoes it</h4><span class="role">Sales</span></header>
+      <ol><li>On TEST – Sam – Quote Builder (Expected Close Date is empty on the board), look at <b>Close By Date</b>.</li><li>Look at the bottom of the screen.</li><li>Click <b>Discard</b>.</li><li>Open the opportunity on the Opportunities board and look at Expected Close Date.</li></ol>
+      <p class="expect"><strong>You should see</strong>Close By Date is already filled with today’s date plus the quote validity period (30 days unless an admin changed it), for example 10 Dec 2026 if you open it on 10 Nov 2026, with the note “Pre-filled from the quote validity period — save to keep it.” An <b>Unsaved changes</b> bar with <b>Discard</b> and <b>Save</b> appears at the bottom straight away. After <b>Discard</b> the date is blank again and the note and bar disappear. Expected Close Date on the board is still empty.</p></article>
+
+    <article class="test" data-id="A5"><header><span class="tid">A5</span><h4>Save opportunity details back to the board</h4><span class="role">Sales</span></header>
+      <ol><li>Type <i>TEST – Sam – description for the Order In email</i> in <b>Description</b>.</li><li>Pick a date next month in <b>Close By Date</b>.</li><li>Choose <b>Discovery</b> in <b>Opportunity Stage</b>. Leave <b>Source</b> empty – you will fill it in during B2.</li><li>Click <b>Save</b> on the bar at the bottom.</li><li>Open the opportunity on the Opportunities board.</li></ol>
+      <p class="expect"><strong>You should see</strong>The <b>Unsaved changes</b> bar appears as soon as you type. After <b>Save</b> a message says <b>Opportunity details saved</b> and the bar disappears. On the Opportunities board, Project Details holds your description, Expected Close Date is the date you picked and Deal Stage is <b>Discovery</b>.</p></article>
+
+    <article class="test" data-id="A6"><header><span class="tid">A6</span><h4>Change the Owner from the app</h4><span class="role">Sales</span></header>
+      <ol><li>Click the <b>Owner</b> box (it shows your name).</li><li>Type part of a colleague’s name in <b>Search…</b> and click them.</li><li>Check the Owner column on the Opportunities board.</li><li>Change the Owner back to yourself the same way.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message <b>Owner saved to the opportunity</b> each time, and the box shows the new name. The Owner column on the Opportunities board changes to your colleague and then back to you. (The Owner is copied to every quote line as its Assigned Consultant, so leave yourself as Owner.)</p></article>
+  </div>
+</section>
+
+<section id="qb-gate" data-section="qb-gate">
+  <div class="sechead"><h2>B. Link the company and pass the “Create quote” check</h2><span class="who">Sales (B5 also needs a Content admin)</span></div>
+  <p><b>Create quote</b> stays greyed out until the opportunity has every field an admin has marked as required to quote. By default these are Source, Account (the company), Contact and Owner. You can fill the missing fields in right there; they are saved to the opportunity.</p>
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>“Create quote” is blocked while fields are missing</h4><span class="role">Sales</span></header>
+      <ol><li>Open TEST – Sam – Quote Builder (no company, contact or source yet).</li><li>Look at <b>Create quote</b> and the box underneath it.</li><li>Try clicking <b>Create quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Create quote</b> is greyed out and nothing happens when clicked. A red-edged box says <b>Add Source, Account, Contact before creating a quote</b>, with one entry for each: Source (<b>Choose source</b>), Account (a search box with “This deal has no account. Use the contact's company, or search and pick one to link it on the Opportunities board.”) and Contact (<b>Choose contact</b>).</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Fill in the missing Contact and Source on the spot</h4><span class="role">Sales</span></header>
+      <ol><li>Under Contact, click <b>Choose contact</b>, type <i>TEST – Sam</i> and click <b>TEST – Sam – Main Contact</b>.</li><li>Under Source, click <b>Choose source</b> and pick any label.</li><li>Look at the <b>Contacts</b> and <b>Source</b> fields higher up the page.</li><li>Check the opportunity on the Opportunities board.</li></ol>
+      <p class="expect"><strong>You should see</strong>Messages <b>Contact saved to the opportunity</b> and <b>Source saved to the opportunity</b>. Each entry disappears from the red box, which now says <b>Add Account before creating a quote</b>. Contacts shows TEST – Sam – Main Contact and Source shows your label. On the board, Contacts and Source are filled in. <b>Create quote</b> is still greyed out.</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>Link the company</h4><span class="role">Sales</span></header>
+      <ol><li>In the <b>Company (Account)</b> search box type <i>zzzz</i>.</li><li>Replace it with <i>TEST – Sam – Riv</i> and look at the results, but do not click one. Clear the box.</li><li>Click <b>Back to Opportunities</b> and open TEST – Sam – Quote Builder again.</li><li>Click the button <b>Use TEST – Sam – Riverside Offices Ltd (from TEST – Sam – Main Contact)</b>.</li><li>Check 🔗Account on the Opportunities board.</li></ol>
+      <p class="expect"><strong>You should see</strong><i>zzzz</i> shows <b>No accounts match "zzzz".</b> The TEST name lists matching companies with their status. After reopening, the <b>Use … (from …)</b> button appears above the search box, because Main Contact belongs to that company. Clicking it shows <b>Linked to TEST – Sam – Riverside Offices Ltd</b>; Company (Account) now shows the name greyed out with “Link managed in the Opportunities board”; the red box disappears and <b>Create quote</b> becomes active. 🔗Account on the board shows the TEST company.</p></article>
+
+    <article class="test" data-id="B4"><header><span class="tid">B4</span><h4>Set the company’s signing preference</h4><span class="role">Sales</span></header>
+      <ol><li>In <b>Signing preference</b> choose <b>Manual approval</b>.</li><li>Open TEST – Sam – Riverside Offices Ltd on the Companies board.</li><li>Back in the app, choose <b>Electronic approval</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message <b>Signing preference set to Manual approval</b> and the text “Proposals include a signature page” under the box. On the Companies board, 🔴Signing Preference is <b>Manual Approval</b>. After switching back: <b>Signing preference set to Electronic approval</b>, the text “Saved to the account”, and 🔴Signing Preference <b>Electronic Approval</b>.</p></article>
+
+    <article class="test" data-id="B5"><header><span class="tid">B5</span><h4>An admin adds a required field</h4><span class="tag">Admin</span><span class="tag">Two people</span><span class="role">Content admin + Sales</span></header>
+      <ol><li>Admin: click <b>Admin</b> → <b>Required fields to quote</b>, tick <b>Deal value</b> and click <b>Save</b>.</li><li>Sales: go back to the list and reopen TEST – Sam – Quote Builder.</li><li>Sales: type <i>12500</i> in the <b>Add deal value</b> box and click <b>Save</b>.</li><li>Admin: untick <b>Deal value</b> and click <b>Save</b> to put the setting back.</li></ol>
+      <p class="expect"><strong>You should see</strong>The admin sees <b>Required fields saved</b>. On the opportunity, <b>Create quote</b> is greyed again and the box says <b>Add Deal value before creating a quote</b>. After saving the value: <b>Deal value saved to the opportunity</b>, <b>Create quote</b> is active again, and Deal Value on the Opportunities board is 12,500. After the admin unticks it, Deal value is no longer required on any opportunity.</p></article>
+  </div>
+</section>
+
+<section id="qb-wizard" data-section="qb-wizard">
+  <div class="sechead"><h2>C. Build a proposal: recipient, work types, frequency and sites</h2><span class="who">Sales, account managers</span></div>
+  <p><b>Create quote</b> opens a six-step wizard: <b>1. Recipient</b>, <b>2. Work types</b>, <b>3. Frequency</b>, <b>4. Sites</b>, <b>5. Costing</b>, <b>6. Review &amp; save</b>. <b>Next</b> stays greyed out until the step is complete, and the grey text at the bottom left says what is missing. Repeat and Contract work behave the same way. In C2–C11 and section D you build one proposal on TEST – Sam – Quote Builder; keep the wizard open from C2 until E4.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Pick work types in this order</th><th>Frequency you will set</th><th>Site(s)</th></tr></thead>
+    <tbody>
+      <tr><td>1. Health and Safety Risk Assessment</td><td>One-off, week 50</td><td>Site A and Warehouse</td></tr>
+      <tr><td>2. Legionella Risk Assessment</td><td>Repeat, Quarterly, 2 years, week 6</td><td>Site A (Site B added in D12)</td></tr>
+      <tr><td>3. Water Quality Assessment</td><td>Repeat, 6-Monthly, 1 year, week 12</td><td>Site A</td></tr>
+      <tr><td>4. Asbestos Management Survey</td><td>Repeat, 2-Yearly, 3 years, week 20</td><td>Site B</td></tr>
+      <tr><td>5. Manual Handling Training</td><td>One-off, sold with quantity 3, week 48</td><td>Site B</td></tr>
+      <tr><td>6. Fire Risk Assessment</td><td>One-off, week 47</td><td>Site A</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout">Week numbers: for a one-off line the calendar year is filled in for you – this year if that week has not started yet, otherwise next year. If you run this script late in the year, the year shown may be next year; that is correct.</div>
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>Start a proposal, add a site, then discard it</h4><span class="role">Sales</span></header>
+      <ol><li>Open <b>TEST – Sam – Other Deal</b> and click <b>Create quote</b>.</li><li>Click <b>Next</b> (the contact is already chosen). In <b>Choose work types</b> tick Health and Safety Risk Assessment and click <b>Next</b>.</li><li>Type <i>20</i> in <b>First visit week number</b> and click <b>Next</b>.</li><li>In the site box type <i>TEST – Sam – Warehouse</i>, click <b>Add a new site</b>, type <i>Testtown</i> in <b>Town/City</b>, note the <b>Site Code</b> and click <b>Add site</b>.</li><li>Click outside the wizard. Then click the cross at the top right of the wizard.</li><li>Click <b>Keep editing</b>. Click the cross again, then <b>Discard</b>.</li><li>Check the Sites board and the Quotes &amp; Invoices board.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message <b>Site TEST – Sam – Warehouse (code) added to the account</b> and the site appears as a chip. Clicking outside does nothing. The cross shows <b>Discard this proposal?</b> – “Everything you have entered in this proposal will be lost.” <b>Keep editing</b> returns you to the wizard unchanged; <b>Discard</b> closes it and the deal still shows “No quotes yet”. On the Sites board, TEST – Sam – Warehouse exists with your Site Code, Town/City Testtown, Active ticked and 🔗⚠️Account = TEST – Sam – Other Company Ltd. No new item is on Quotes &amp; Invoices.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>Open the wizard and choose the recipient</h4><span class="role">Sales</span></header>
+      <ol><li>Open TEST – Sam – Quote Builder and click <b>Create quote</b>.</li><li>Look at the title, the step bar and the contact list.</li><li>Click <b>TEST – Sam – Second Contact</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The title <b>New proposal</b> with “· Quote No assigned when you create the items”, and under it “TEST – Sam – Riverside Offices Ltd · for TEST – Sam – Main Contact”. The note “One contact per proposal. Quotes to different people need separate proposals.” Both TEST contacts are listed with their email; Main Contact (the opportunity’s contact) is selected. <b>Back</b> is greyed out and steps from <b>3. Frequency</b> onwards are greyed. After clicking Second Contact it is highlighted and the line under the title changes to “… · for TEST – Sam – Second Contact”.</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>Choose the work types</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Next</b>. Before choosing anything, look at <b>Next</b> and the bottom-left text.</li><li>Click <b>Choose work types</b> and type <i>zzzz</i> in <b>Search work types…</b>.</li><li>Type <i>legion</i>, tick Legionella Risk Assessment and look at the search box.</li><li>Untick it again, then tick the six work types in the order shown in the table above.</li></ol>
+      <p class="expect"><strong>You should see</strong>With nothing chosen, <b>Next</b> is greyed and the text says <b>Choose at least one work type</b>. Work types are grouped under category headings. <i>zzzz</i> shows <b>No matching work types</b>; <i>legion</i> shows only Legionella work types. The search box clears after each tick, ready for the next one. With six chosen the button reads <b>6 work types</b> and <b>Next</b> is active.</p></article>
+
+    <article class="test" data-id="C4"><header><span class="tid">C4</span><h4>One-off line: the first visit week is required</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Next</b>. You are on Health and Safety Risk Assessment.</li><li>Look at the defaults and the bottom-left text.</li><li>Type <i>54</i> in <b>First visit week number</b>, then change it to <i>50</i>.</li><li>Click <b>Next</b>, then <b>Back</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Chips <b>1. Health and Safety Risk Assessment</b> to <b>6. Fire Risk Assessment</b> across the top and “Work type 1 of 6”. <b>Frequency</b> is One-off, <b>Sold as One-Off with Quantity</b> is unticked and <b>Planned days per visit</b> is 1. The bottom text says <b>Health and Safety Risk Assessment: add a first visit week</b> and <b>Next</b> is greyed. Week 54 shows <b>Enter a whole week number from 1 to 53.</b> Week 50 clears the error, <b>Calendar year</b> fills in (this year if week 50 has not started, otherwise next year) with “Defaults to the next time that week comes round. Saved as Contract Year 1.” <b>Next</b> moves to “Work type 2 of 6”; <b>Back</b> returns to work type 1 with week 50 still there.</p></article>
+
+    <article class="test" data-id="C5"><header><span class="tid">C5</span><h4>Repeat line: visits are calculated, and can be typed over</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Next</b> to reach Legionella Risk Assessment and set <b>Frequency</b> to <b>Repeat</b>. Read the bottom-left text.</li><li>Enter <b>Contract Period (Years)</b> 2, <b>Visit Frequency</b> Quarterly, <b>First visit week number</b> 6 and <b>First Visit — Calendar Year</b> next year (for example 2027).</li><li>Hover the small i next to <b>Number of Visits</b>.</li><li>Type <i>7</i> in <b>Number of Visits</b>, then click the round-arrow button next to it.</li><li>Change <b>Frequency</b> to <b>Contract</b>, then back to <b>Repeat</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The text says <b>Legionella Risk Assessment: add a contract period, a visit frequency and a first visit week</b> until all three are filled. <b>First Visit — Contract Year</b> shows Year 1. Number of Visits shows <b>8</b> (4 a year × 2 years) with a <b>calculated</b> badge; the tooltip explains “Total over the contract. Repeat: visits per year × contract years…”. Typing 7 changes the badge to <b>manual</b> and shows “Calculated: 8”; the round arrow (<b>Use calculated value</b>) puts it back to 8, calculated. Contract shows exactly the same fields and 8 visits.</p></article>
+
+    <article class="test" data-id="C6"><header><span class="tid">C6</span><h4>“Every 2 months” overrides Visit Frequency</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Next</b> (Water Quality Assessment). Set <b>Frequency</b> Repeat, <b>Contract Period (Years)</b> 1 and week 12.</li><li>Under <b>Or every (Frequency Unit + Measure)</b> type <i>2</i> and choose <b>Months</b>.</li><li>Now also choose <b>Visit Frequency</b> Quarterly.</li><li>Clear the Frequency Unit box (leave it empty).</li><li>Change <b>Visit Frequency</b> to 6-Monthly and click <b>Next</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Every 2 months gives <b>Number of Visits 6</b> (12 ÷ 2 × 1 year). Choosing Quarterly as well keeps it at 6 – the note says “Used instead of Visit Frequency when both are set.” With the unit cleared it changes to <b>4</b> (Quarterly), and 6-Monthly gives <b>2</b>.</p></article>
+
+    <article class="test" data-id="C7"><header><span class="tid">C7</span><h4>2-yearly visits are rounded up</h4><span class="role">Sales</span></header>
+      <ol><li>On Asbestos Management Survey set <b>Frequency</b> Repeat, <b>Visit Frequency</b> 2-Yearly and week 20.</li><li>Type <i>2</i> in <b>Contract Period (Years)</b> and note Number of Visits.</li><li>Change it to <i>3</i>, then click <b>Next</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>2 years gives <b>Number of Visits 1</b> (half a visit a year × 2). 3 years gives <b>2</b> (1.5 is rounded up), with the <b>calculated</b> badge.</p></article>
+
+    <article class="test" data-id="C8"><header><span class="tid">C8</span><h4>One-off sold with a quantity</h4><span class="role">Sales</span></header>
+      <ol><li>On Manual Handling Training leave Frequency One-off and tick <b>Sold as One-Off with Quantity</b>. Read the bottom-left text.</li><li>Type <i>3</i> in <b>One-Off Quantity</b> and <i>48</i> in the week number.</li><li>Click <b>Next</b>. On Fire Risk Assessment leave One-off and type week <i>47</i>.</li><li>Click <b>Next</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Ticking the box shows <b>One-Off Quantity</b> and a <b>Number of Visits</b> box; the text asks for “a one-off quantity”. With quantity 3, Number of Visits shows <b>3</b>, calculated. Fire Risk Assessment needs only the week. The final <b>Next</b> checks every work type and opens <b>4. Sites</b>; completed work types show as grey chips.</p></article>
+
+    <article class="test" data-id="C9"><header><span class="tid">C9</span><h4>Add new sites to the company (Site Code rules)</h4><span class="role">Sales</span></header>
+      <ol><li>Look at the Sites step: one box per work type.</li><li>In the Health and Safety Risk Assessment box, type <i>TEST – Sam – Site A</i> and click <b>Add a new site</b>. Note the suggested <b>Site Code</b>.</li><li>Delete the Site name, then type one letter. Look at <b>Add site</b>.</li><li>Type the full name again. Replace the Site Code with the Warehouse code from C1 and click <b>Add site</b>.</li><li>Clear the Site Code box, enter Town/City <i>Testtown</i> and Postcode <i>TE1 1ST</i>, and click <b>Add site</b>.</li><li>In the Manual Handling Training box add <i>TEST – Sam – Site B</i> the same way, keeping the suggested code.</li></ol>
+      <p class="expect"><strong>You should see</strong>Each box shows its frequency, for example “One-off × 1”, “Quarterly · 4/yr · 2 yr”, “6-Monthly · 2/yr · 1 yr”, “2-Yearly · 0.5/yr · 3 yr”, “One-off × 3”, and <b>Add at least one site.</b> in red; the bottom text says <b>Add a site to every work type</b>. The account’s list says <b>No sites linked to this account yet</b>. <b>New site on this account</b> opens with the name already filled in. <b>Add site</b> is greyed with fewer than 2 characters. The Warehouse code is refused: <b>Site Code (code) already exists on the Sites board. Choose another code.</b> With the box cleared, the site is saved with the next free code: <b>Site TEST – Sam – Site A (code) added to the account</b>. Site B gets the next number. On the Sites board both sites have their Site Code, Town/City, Postcode, Active ticked and 🔗⚠️Account = TEST – Sam – Riverside Offices Ltd.</p></article>
+
+    <article class="test" data-id="C10"><header><span class="tid">C10</span><h4>Add the company’s sites to the other work types</h4><span class="role">Sales</span></header>
+      <ol><li>In the Legionella Risk Assessment box, look at <b>This account's sites</b> and click Site A.</li><li>Add Site A to Water Quality Assessment, Site B to Asbestos Management Survey and Site A to Fire Risk Assessment.</li><li>Also add Site B to Fire Risk Assessment, then click the cross on its Site B chip.</li></ol>
+      <p class="expect"><strong>You should see</strong>The list shows Site A and Site B with their code and “Testtown, TE1 1ST”. Clicking a site adds it as a chip and removes it from that box’s list. The cross removes the Site B chip from Fire Risk Assessment only. Once every box has a site, the red text and the bottom hint disappear and <b>Next</b> becomes active.</p></article>
+
+    <article class="test" data-id="C11"><header><span class="tid">C11</span><h4>Search all sites and link one from another company</h4><span class="role">Sales</span></header>
+      <ol><li>In the Health and Safety Risk Assessment box click the <b>Search all sites</b> tab.</li><li>Type <i>zzzz</i>, then replace it with <i>TEST – Sam – Ware</i>.</li><li>Click the Warehouse result.</li><li>Go back to <b>This account's sites</b> in another box.</li><li>Check TEST – Sam – Warehouse on the Sites board.</li></ol>
+      <p class="expect"><strong>You should see</strong>Before typing: <b>Type a site name to search all sites</b>. <i>zzzz</i>: <b>No sites match that name</b>. The Warehouse shows its code, Testtown and “· on TEST – Sam – Other Company Ltd”, with <b>Link &amp; add</b> on the right. Clicking it shows <b>TEST – Sam – Warehouse linked to this account</b> and adds a Warehouse chip for Health and Safety Risk Assessment. The Warehouse now appears in <b>This account's sites</b>. On the Sites board its 🔗⚠️Account lists both TEST companies.</p></article>
+  </div>
+</section>
+
+<section id="qb-costing" data-section="qb-costing">
+  <div class="sechead"><h2>D. Cost and price each line</h2><span class="who">Sales, account managers</span></div>
+  <p>Step 5 shows one costing card per site and work type. Click a card’s heading to open it. Each card has its own frequency, time grid, rates, other costs and a selling price. The selling price is always the price <b>per visit</b>; the annual and contract values are worked out from it. You cannot move on until every card has a selling price.</p>
+  <div class="callout"><b>How the numbers are worked out.</b> Prime cost per visit = (consultant hours ÷ number of visit columns) × consultant rate + (support hours ÷ number of visit columns) × support rate + lab and asbestos sample costs + equipment, external analysis and courier costs. Annual = per visit × visits per year (one-off: × Number of Visits). Contract = annual × Contract Period (one-off: same as annual). Margin = selling price − prime cost. Margin % = margin ÷ selling price.</div>
+  <div class="callout warn">The worked examples use a consultant rate of £75 and a support rate of £25 – type these into each card if the pre-filled rates differ. They also assume the <b>Standard support cost</b> row shows 0. If it shows a number, add that number × £25 to every prime cost. Once you start costing, do not change anything in step 3 – it would overwrite the frequency on every card for that work type.</div>
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>One card per site and work type, each needs a price</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Next</b> to reach <b>5. Costing</b>.</li><li>Count the cards and read their headings.</li><li>Look at <b>Next</b> and the bottom-left text.</li></ol>
+      <p class="expect"><strong>You should see</strong>The text “One card per site and work type. A 3-year contract is one card: Visit 1–4 are visits within a year, and Contract covers every year.” Seven closed cards, each headed “site · work type” with its frequency underneath, and <b>Visit</b>, <b>Annual</b> and <b>Contract</b> showing “—”. Each card has <b>Apply to more sites</b> and a bin button. <b>Next</b> is greyed and the text says <b>Health and Safety Risk Assessment · TEST – Sam – Site A: add a selling price</b>.</p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>Time grid and rates on a one-off card</h4><span class="role">Sales</span></header>
+      <ol><li>Open the Site A · Health and Safety Risk Assessment card.</li><li>Look at <b>Time (hours)</b>, then try to type in the Office set up and Quality checking rows.</li><li>Under <b>Rates &amp; costs</b>, clear <b>Consultant hourly rate (£)</b>.</li><li>Type <i>75</i> and <i>25</i> in the consultant and support rates.</li><li>In Visit 1 enter Travel time for site visit <i>1.25</i>, Site work <i>4</i>, Report writing <i>2</i> and Variable hours <i>2</i>.</li></ol>
+      <p class="expect"><strong>You should see</strong>One <b>Visit 1</b> column plus <b>Totals</b>, and “One visit column for this frequency.” <b>Office set up</b> is 0.5 and <b>Quality checking</b> 0.25, both marked <b>fixed</b> and not editable; <b>Standard support cost</b> is marked <b>from work type</b> and not editable. The rates were pre-filled from the admin defaults. With the consultant rate cleared, the box turns red: <b>Rate is empty — consultant time is costed at £0</b>. After your entries, <b>Consultant total</b> is <b>8</b> (0.5 + 1.25 + 4 + 2 + 0.25) and <b>Support total</b> is 2. If an admin has added reference prices for this work type, a <b>Reference pricing (sense-check only)</b> box lists them.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Prime cost, selling price and margin</h4><span class="role">Sales</span></header>
+      <ol><li>On the same card look at <b>Prime Cost (Restricted)</b>.</li><li>Type <i>500</i> in <b>Selling price per visit (£)</b> and look at the margin box.</li><li>Change it to <i>1000</i>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Prime cost Per visit, Annual and Contract are all <b>£650.00</b> (8 h × £75 + 2 h × £25). At £500 the margin box shows a negative margin of £-150.00, Margin % -30.0%. At £1000, <b>Annual value</b> and <b>Contract value</b> show £1000.00 and <b>Additional margin over prime cost</b> shows £350.00, Margin % 35.0% on all three rows. The card heading shows Visit £1,000.00, Annual £1,000.00, Contract £1,000.00, and the bottom text moves on to the next unpriced card.</p></article>
+
+    <article class="test" data-id="D4"><header><span class="tid">D4</span><h4>Other costs and equipment use add to the prime cost</h4><span class="role">Sales</span></header>
+      <ol><li>On the same card enter <b>Equipment hire (£)</b> 40, <b>External analysis (£)</b> 30 and <b>Courier cost (£)</b> 15.</li><li>Enter <b>Equipment use (days)</b> 2 and leave <b>Equipment use daily rate (£)</b> at 37.</li><li>Change the daily rate to 40, look at the prime cost, then set it back to 37.</li></ol>
+      <p class="expect"><strong>You should see</strong>The hint under Equipment use shows <b>Equipment use cost: £74.00</b> (2 × £37). Prime cost per visit becomes <b>£809.00</b> (£650 + £40 + £30 + £15 + £74) and the margin £191.00, Margin % 19.1%. At £40 a day the hint shows £80.00 and the prime cost £815.00; back at £37 it returns to £809.00.</p></article>
+
+    <article class="test" data-id="D5"><header><span class="tid">D5</span><h4>Repeat card: four visit columns and “Same hours for every visit”</h4><span class="role">Sales</span></header>
+      <ol><li>Open Site A · Legionella Risk Assessment (Quarterly, 2 years). Set the rates to 75 and 25.</li><li>Check <b>Same hours for every visit</b> is on. In Visit 1 enter Travel time 1, Site work 3, Report writing 1.25 and Variable hours 1.</li><li>Try to type in the Visit 2 column.</li><li>Switch <b>Same hours for every visit</b> off and change Site work in Visit 3 to 5.</li><li>Switch it back on.</li></ol>
+      <p class="expect"><strong>You should see</strong>Columns <b>Visit 1</b> to <b>Visit 4</b> plus Totals, and “4 visit columns, set by the line's frequency.” With the switch on, Visits 2–4 copy Visit 1 and cannot be typed in: Consultant total 6 per visit and <b>24</b> in Totals; Support total 4. Prime cost Per visit <b>£475.00</b> (6 h × £75 + 1 h × £25), Annual £1900.00 (× 4), Contract £3800.00 (× 2 years). With the switch off, Visit 3 alone becomes 8 hours, Totals 26, and per visit £512.50 (26 ÷ 4 × £75 + £25). Switching it back on copies Visit 1 to every visit again and returns to £475.00.</p></article>
+
+    <article class="test" data-id="D6"><header><span class="tid">D6</span><h4>Repeat card values: per visit × visits a year × years</h4><span class="role">Sales</span></header>
+      <ol><li>On the Legionella card type <i>600</i> in <b>Selling price per visit (£)</b>.</li><li>Look at Annual value, Contract value, the margin box and the card heading.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Annual value</b> £2400.00 (£600 × 4 visits a year) and <b>Contract value</b> £4800.00 (£2,400 × 2 years). Margin: Per visit £125.00, Annual £500.00, Contract £1000.00, each Margin % 20.8%. The heading shows “Quarterly · 4/yr · 2 yr” and Visit £600.00, Annual £2,400.00, Contract £4,800.00.</p></article>
+
+    <article class="test" data-id="D7"><header><span class="tid">D7</span><h4>One-off card with a quantity</h4><span class="role">Sales</span></header>
+      <ol><li>Open Site B · Manual Handling Training (One-off × 3). Set the rates to 75 and 25.</li><li>Enter Site work <i>3</i>.</li><li>Type <i>450</i> as the selling price per visit.</li></ol>
+      <p class="expect"><strong>You should see</strong>One visit column; Consultant total 3.75. Prime cost Per visit £281.25, Annual and Contract £843.75 (× 3 visits). Annual value and Contract value £1350.00 (£450 × 3). Margin Per visit £168.75 and Annual/Contract £506.25, all Margin % 37.5%. The heading shows “One-off × 3”.</p></article>
+
+    <article class="test" data-id="D8"><header><span class="tid">D8</span><h4>Fire tier fills the time grid</h4><span class="role">Sales</span></header>
+      <ol><li>Open a non-fire card (for example Site A · Health and Safety Risk Assessment) and check there is no <b>Fire tier</b> box. Close it.</li><li>Open Site A · Fire Risk Assessment. Choose a tier the admin has filled in, in <b>Fire tier</b>.</li><li>Compare the grid with the admin’s <b>Fire tier default hours (per visit)</b>, then change one hour value.</li><li>Choose a tier the admin has left at 0.</li><li>Set the rates to 75 and 25 and the selling price to <i>800</i>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Fire tier</b> only appears on fire work types, with Small, Medium, Large and Campus and the note “Fills the time grid with this tier's default hours. You can still adjust them.” Choosing a filled tier puts its hours into Travel time, Site work, Report writing, Report checking, Travel for customer meeting, Customer meeting and Variable hours, matching the admin table; you can still change them. An empty tier shows in red <b>No defaults set for this tier in Admin → Costing defaults</b> and leaves the hours as they were.</p></article>
+
+    <article class="test" data-id="D9"><header><span class="tid">D9</span><h4>Planned samples, and changing the frequency for one site</h4><span class="role">Sales</span></header>
+      <ol><li>Open Site A · Water Quality Assessment (6-Monthly).</li><li>Under <b>Planned work (air / water)</b>, in the Water table, type 4 for <b>W1-3 (S) TVC</b> in Visit 1 and Visit 2. Tick <b>W8-2 (No PS)</b> in Visit 1 only. (If your admin’s test list uses different codes, use one number-box test and one tick-box test.)</li><li>Look at the Totals and Frequency columns for those rows and for an empty row.</li><li>Under <b>Frequency for this site</b>, change <b>Visit Frequency</b> to Yearly.</li><li>Look at the Legionella card heading.</li></ol>
+      <p class="expect"><strong>You should see</strong>Separate tables per category (Air, Computer room, Water by default) with Visit 1 and Visit 2 columns. Tests marked (S), (SA) or (CA) take a number; the others are tick boxes. Totals show 8 and 1. Their Frequency dropdown becomes active and shows 6-Monthly; empty rows stay greyed. After switching to Yearly, the heading shows “Yearly · 1/yr · 1 yr”, the time grid and sample tables show only Visit 1, and W1-3 (S) TVC Totals drops to 4 (the Visit 2 samples are cleared). The Legionella card still says Quarterly – only this card changed.</p></article>
+
+    <article class="test" data-id="D10"><header><span class="tid">D10</span><h4>Lab sample costs on an air/water card</h4><span class="role">Sales</span></header>
+      <ol><li>On the Water Quality Assessment card set the rates to 75 and 25 and note the prime cost per visit.</li><li>Under <b>Lab sample costs</b> enter <b>Air &amp; Non-Pot (£22/sample)</b> 2, <b>Potable (£37/sample)</b> 1 and <b>Legionella (£70/sample)</b> 1.</li><li>Type <i>500</i> as the selling price per visit.</li><li>Open the Health and Safety Risk Assessment card and look for Lab sample costs.</li></ol>
+      <p class="expect"><strong>You should see</strong>Hints “Cost: £44.00”, “Cost: £37.00” and “Cost: £70.00”, and <b>Total lab costs: £151.00</b>. The prime cost per visit goes up by exactly £151.00. Lab sample costs only appear on air/water work types, so the Health and Safety card does not have them.</p></article>
+
+    <article class="test" data-id="D11"><header><span class="tid">D11</span><h4>Asbestos samples and courier</h4><span class="role">Sales</span></header>
+      <ol><li>Open Site B · Asbestos Management Survey. Set the rates to 75 and 25 and Site work to 2.</li><li>Note the prime cost per visit.</li><li>In the <b>Asbestos</b> box enter <b>Number of samples</b> 10, <b>Unit cost per sample (£)</b> 8 and <b>Courier cost (£)</b> 25.</li><li>Type <i>400</i> as the selling price per visit.</li></ol>
+      <p class="expect"><strong>You should see</strong>One visit column (2-yearly work has one visit in a year). Prime cost per visit is £206.25 (2.75 h × £75), then <b>£311.25</b> after the asbestos costs (+ £80 samples + £25 courier). The heading shows “2-Yearly · 0.5/yr · 3 yr” and Visit £400.00.</p></article>
+
+    <article class="test" data-id="D12"><header><span class="tid">D12</span><h4>Copy a card to another site</h4><span class="role">Sales</span></header>
+      <ol><li>On the Site A · Legionella Risk Assessment card click <b>Apply to more sites</b>.</li><li>Read the text, check Site A is not offered, and click Site B.</li><li>Open the new card and compare it with the Site A card.</li></ol>
+      <p class="expect"><strong>You should see</strong>The pop-up says “Copies this card's frequency and costing to each site you pick. Each copy stays editable.” A new card <b>TEST – Sam – Site B · Legionella Risk Assessment</b> appears with “Quarterly · 4/yr · 2 yr”, Visit £600.00, Annual £2,400.00, Contract £4,800.00, and the same hours, rates and price inside.</p></article>
+
+    <article class="test" data-id="D13"><header><span class="tid">D13</span><h4>Change one copy only, then finish pricing</h4><span class="role">Sales</span></header>
+      <ol><li>On the Site B · Legionella card, under <b>Frequency for this site</b>, change <b>Contract Period (Years)</b> to 3.</li><li>Look at both Legionella card headings.</li><li>On the Warehouse · Health and Safety Risk Assessment card type <i>700</i> as the selling price.</li><li>Look at <b>Next</b> and the bottom-left text.</li></ol>
+      <p class="expect"><strong>You should see</strong>The Site B card shows “Quarterly · 4/yr · 3 yr”, Number of Visits 12 and Contract £7,200.00; the Site A card still shows 2 yr and £4,800.00. With all eight cards priced the hint disappears and <b>Next</b> is active.</p></article>
+  </div>
+</section>
+
+<section id="qb-save" data-section="qb-save">
+  <div class="sechead"><h2>E. Review, save and check the boards</h2><span class="who">Sales, account managers</span></div>
+  <p>The last step shows a summary, the invoicing for each site and the standard paragraphs. <b>Create … items</b> saves every line to the Quotes &amp; Invoices board under one new Quote No. The figures below are what your proposal should show.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Site</th><th>Work type</th><th>Visit</th><th>Annual</th><th>Contract</th></tr></thead>
+    <tbody>
+      <tr><td>Site A</td><td>Fire Risk Assessment (One-off)</td><td>£800</td><td>£800</td><td>£800</td></tr>
+      <tr><td>Site A</td><td>Health and Safety Risk Assessment (One-off)</td><td>£1,000</td><td>£1,000</td><td>£1,000</td></tr>
+      <tr><td>Site A</td><td>Legionella Risk Assessment (Repeat, Quarterly, 2 yr)</td><td>£600</td><td>£2,400</td><td>£4,800</td></tr>
+      <tr><td>Site A</td><td>Water Quality Assessment (Repeat, Yearly, 1 yr)</td><td>£500</td><td>£500</td><td>£500</td></tr>
+      <tr><td>Site B</td><td>Asbestos Management Survey (Repeat, 2-Yearly, 3 yr)</td><td>£400</td><td>£200</td><td>£600</td></tr>
+      <tr><td>Site B</td><td>Legionella Risk Assessment (Repeat, Quarterly, 3 yr)</td><td>£600</td><td>£2,400</td><td>£7,200</td></tr>
+      <tr><td>Site B</td><td>Manual Handling Training (One-off × 3)</td><td>£450</td><td>£1,350</td><td>£1,350</td></tr>
+      <tr><td>Warehouse</td><td>Health and Safety Risk Assessment (One-off)</td><td>£700</td><td>£700</td><td>£700</td></tr>
+      <tr><td><b>Total</b></td><td></td><td></td><td><b>£9,350</b></td><td><b>£16,950</b></td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">2-yearly lines: the app counts half a visit per year, so a £400 visit shows £200 a year and £600 over 3 years, even though Number of Visits is 2 (2 × £400 = £800). If that is not how Assurity Consulting prices 2-yearly work, record it as a finding.</div>
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>Review summary and totals</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Next</b> to reach <b>6. Review &amp; save</b>.</li><li>Compare the <b>Summary</b> table with the table above.</li></ol>
+      <p class="expect"><strong>You should see</strong>Lines grouped under site headings (Site A, Site B, Warehouse), work types in alphabetical order within each site, each with its frequency (One-off or Repeat) and Visit, Annual and Contract values matching the table. The <b>Total</b> row shows Annual £9,350.00 and Contract £16,950.00.</p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Choose how each site is invoiced</h4><span class="role">Sales</span></header>
+      <ol><li>Under <b>Invoicing</b>, open the dropdown for Site A and look at the options.</li><li>Choose <b>Quarterly</b> for Site A and <b>Annually</b> for Site B.</li><li>Try to change the Warehouse.</li></ol>
+      <p class="expect"><strong>You should see</strong>The note “How each site is invoiced. Saved on every line for that site.” One row per site, each starting at <b>After each visit</b>. Options: After each visit, Monthly, Quarterly, Six-monthly, Annually. The Warehouse row is greyed out with “One-off work only — invoiced after each visit.”</p></article>
+
+    <article class="test" data-id="E3"><header><span class="tid">E3</span><h4>Standard paragraphs for this proposal</h4><span class="role">Sales</span></header>
+      <ol><li>Look at <b>Standard paragraphs</b>.</li><li>If there are buttons such as <b>General</b> or a work type name with a count, open one and tick an optional paragraph.</li><li>Use the up/down arrows to move a paragraph.</li><li>Click the pencil on a paragraph, change a word, and click the tick.</li><li>Click the cross on an <b>Always</b> paragraph and choose <b>Keep it</b>. Click the cross again and choose <b>Remove</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>“Always include” paragraphs are already listed, General ones first and then by work type, each with an <b>Always</b> badge and its scope. Ticked optional paragraphs are added with an <b>Optional</b> badge and the button count goes up (for example 1/3). Arrows change the order. While editing you see “Changes apply to this quote only. The library is not changed.” and afterwards an <b>Edited for this quote</b> badge. The cross shows <b>Remove an “Always include” paragraph?</b>; <b>Keep it</b> leaves it in place, <b>Remove</b> takes it out and it does not come back.</p></article>
+
+    <article class="test" data-id="E4"><header><span class="tid">E4</span><h4>Create the items</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Create 8 items</b>.</li><li>Write down the Quote No.</li><li>Look at the new card in the Quotes area.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message <b>Quote No … saved — 8 items</b> and the wizard closes. The Quote No is one higher than the highest Quote No already on the board (or the admin’s starting number + 1, if that is higher). A card <b>Quote No …</b> with the pill <b>Working on it (draft)</b> and “8 items · for TEST – Sam – Second Contact” (the recipient you chose in C2). It holds the same summary and totals as E1, each line with an open-on-board icon, a pencil and a bin; an <b>Invoicing</b> section; and a <b>Change history</b> link that shows “No changes recorded yet.”</p></article>
+
+    <article class="test" data-id="E5"><header><span class="tid">E5</span><h4>Board check: one-off lines</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Open Quotes &amp; Invoices board</b> and search for <i>Q</i> followed by your Quote No.</li><li>Open the Health and Safety Risk Assessment line for Site A.</li><li>Open the Manual Handling Training line.</li></ol>
+      <p class="expect"><strong>You should see</strong>8 items, each named “Q(Quote No) · work type — site”, for example “Q10452 · Health and Safety Risk Assessment — TEST – Sam – Site A”. On the H&amp;S line: Type Quote; Status Working on it; Quote No; 🔗Opportunity TEST – Sam – Quote Builder; Sites TEST – Sam – Site A; 🔗Recipient TEST – Sam – Second Contact; Work Type(s) Health and Safety Risk Assessment; Work Category Health and Safety; Frequency One-off; Number of Visits 1; First Visit — Week Number 50; First Visit — Calendar Year as in C4; First Visit — Contract Year Year 1; Planned Days per Visit 1; Presentation/Posting Date empty; Assigned Consultant you. On Manual Handling Training: Sold as One-Off ticked, One-Off Quantity 3, Number of Visits 3, week 48.</p></article>
+
+    <article class="test" data-id="E6"><header><span class="tid">E6</span><h4>Board check: repeat lines and planned samples</h4><span class="role">Sales</span></header>
+      <ol><li>Open the Site A Legionella Risk Assessment line, then the Site B one.</li><li>Open the Asbestos Management Survey line.</li><li>Open the Water Quality Assessment line.</li></ol>
+      <p class="expect"><strong>You should see</strong>Site A Legionella: Frequency Repeat, Visit Frequency Quarterly, Contract Period (Years) 2, Number of Visits 8, First Visit — Week Number 6, First Visit — Calendar Year as you typed, First Visit — Contract Year Year 1, Invoicing Frequency Quarterly, Work Category Legionella. Site B Legionella: Contract Period 3, Number of Visits 12, Invoicing Frequency Annually. Asbestos: Visit Frequency 2-Yearly, Contract Period 3, Number of Visits 2. Water Quality Assessment: Visit Frequency Yearly, Contract Period 1, Number of Visits 1, Work Category Workplace Environmental Assessment, and 🟢Planned Samples (per visit) showing {"W1-3 (S) TVC":[4,0,0,0],"W8-2 (No PS)":[1,0,0,0]}. Lines without planned samples leave that column empty.</p></article>
+
+    <article class="test" data-id="E7"><header><span class="tid">E7</span><h4>Board check: costs and the per-visit price</h4><span class="role">Sales</span></header>
+      <ol><li>On the Site A Health and Safety Risk Assessment line, look at the cost columns.</li><li>Do the same on the Site A Legionella, Water Quality Assessment and Asbestos lines.</li></ol>
+      <p class="expect"><strong>You should see</strong>H&amp;S Site A: Consultant Hourly Rate 75, Support Hourly Rate 25, Total Consultant Hours 8, Total Support Hours 2, Equipment/External Analysis/Courier Cost 159 (40 + 30 + 15 + 74), Actual Selling Price 1,000. Legionella Site A: Total Consultant Hours 24 and Total Support Hours 4 (all four visit columns), Actual Selling Price <b>600</b> – the price per visit, never 2,400 or 4,800. Water Quality Assessment: Lab Sample Cost 151. Asbestos: Lab Sample Cost 80 and Equipment/External Analysis/Courier Cost 25.</p></article>
+
+    <article class="test" data-id="E8"><header><span class="tid">E8</span><h4>The opportunity shows the new lines</h4><span class="role">Sales</span></header>
+      <ol><li>Back in the app, look at <b>Assigned Consultant</b> on TEST – Sam – Quote Builder.</li><li>Open the opportunity on the Opportunities board and look at 🔗Related Quotes.</li><li>Click the open-on-board icon on one line in the app.</li></ol>
+      <p class="expect"><strong>You should see</strong>Assigned Consultant now shows your name, with “From this deal’s quotes”. 🔗Related Quotes on the opportunity lists all 8 lines (names starting with Q and your Quote No). The icon opens that line on the Quotes &amp; Invoices board in a new tab.</p></article>
+  </div>
+</section>
+
+<section id="qb-manage" data-section="qb-manage">
+  <div class="sechead"><h2>F. Manage saved quotes: edit, revise, approve and the dashboard</h2><span class="who">Sales, account managers, Quotes &amp; Orders team</span></div>
+  <p>Each proposal card shows one status – the least advanced status of its live lines. A proposal can be edited until it is sent; after that it is locked and changes are made by revising it, which creates a new version with the same Quote No. Some tests here need steps from the second part of this script (generate, review, send); always send to your own email address.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Status on the card</th><th>What it means</th><th>Can you edit or delete lines?</th></tr></thead>
+    <tbody>
+      <tr><td>Working on it (draft)</td><td>Saved, no document yet</td><td>Yes</td></tr>
+      <tr><td>Generated</td><td>Proposal document created</td><td>Yes (goes back to Generated if it was Reviewed)</td></tr>
+      <tr><td>Reviewed</td><td>Document checked, ready to send</td><td>Yes – any change sends it back to Generated</td></tr>
+      <tr><td>Sent to client</td><td>Emailed to the client</td><td>No – use Revise</td></tr>
+      <tr><td>Approved / Declined</td><td>Client decision recorded</td><td>No (Declined can be revised)</td></tr>
+      <tr><td>Superseded</td><td>An older version after a revise</td><td>No – read-only history</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>Edit a line: saved values load and a reason is required</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Back to Opportunities</b> and open TEST – Sam – Quote Builder again, so the app picks up the sites you created in C9.</li><li>Click the pencil on Site A · Legionella Risk Assessment.</li><li>Check the <b>Quote Details</b> tab, then the <b>Costing</b> tab.</li><li>Clear <b>Title</b> and look at <b>Update Quote</b>. Put the title back.</li><li>Leave <b>Reason for change</b> empty and click <b>Update Quote</b>.</li><li>Click <b>Cancel</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The <b>Edit Quote</b> dialog with a <b>View on board</b> button. <b>Item name on the board</b> shows “Q(Quote No) · Legionella Risk Assessment — TEST – Sam – Site A” and cannot be typed in. Frequency Repeat, Contract Period 2, week 6, Visit Frequency Quarterly, <b>Number of Visits (over the contract)</b> 8, Legionella ticked and Site A chosen. The Costing tab shows your four-column grid, rates 75/25, price 600 and prime cost £475.00. With Title empty, <b>Update Quote</b> is greyed. Without a reason the message <b>Add a reason for this change so the history is traceable</b> appears and the dialog stays open. Cancel closes it with nothing changed.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>Edit the visit frequency: visits and values are recalculated</h4><span class="role">Sales</span></header>
+      <ol><li>Edit Site A · Legionella Risk Assessment again and change <b>Visit Frequency</b> to 6-Monthly.</li><li>Open the <b>Costing</b> tab and look at the grid and values.</li><li>Type <i>TEST – client wants 6-monthly visits</i> in <b>Reason for change</b> and click <b>Update Quote</b>.</li><li>Check the line on the board, then open <b>Change history</b> on the card.</li></ol>
+      <p class="expect"><strong>You should see</strong>Number of Visits (over the contract) becomes <b>4</b> (2 a year × 2 years). The grid has 2 visit columns; Annual value £1200.00 and Contract value £2400.00. After saving, the message <b>Quote updated successfully</b>; the Legionella Site A row shows £600.00 / £1,200.00 / £2,400.00 and the card totals drop to £8,150.00 and £14,550.00. On the board: Visit Frequency 6-Monthly, Number of Visits 4, Total Consultant Hours 12. Change history shows <b>Edited</b>, your name, the date and time, your reason and a “Changed:” list.</p></article>
+
+    <article class="test" data-id="F3"><header><span class="tid">F3</span><h4>Edit a one-off quantity</h4><span class="role">Sales</span></header>
+      <ol><li>Edit Site B · Manual Handling Training. Check Sold as One-Off with Quantity is ticked and One-Off Quantity is 3.</li><li>Change <b>One-Off Quantity</b> to 4 and look at <b>Number of Visits (over the contract)</b>.</li><li>Add a reason and click <b>Update Quote</b>.</li><li>Check the card row and the board.</li></ol>
+      <p class="expect"><strong>You should see</strong>Number of Visits follows the quantity and shows <b>4</b> (the help text says “One-off: the one-off quantity”). After saving, the row shows Visit £450.00, Annual and Contract £1,800.00. On the board, One-Off Quantity 4 and Number of Visits 4.</p></article>
+
+    <article class="test" data-id="F4"><header><span class="tid">F4</span><h4>Move a line to another site</h4><span class="role">Sales</span></header>
+      <ol><li>Edit Site A · Fire Risk Assessment and open the <b>Site</b> dropdown.</li><li>Choose TEST – Sam – Site B and look at <b>Item name on the board</b>.</li><li>Add a reason and click <b>Update Quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The dropdown lists the company’s sites as “name (Site Code) - town, postcode”. The item name changes to end “— TEST – Sam – Site B”. After saving, Fire Risk Assessment appears under the Site B heading on the card. On the board, the item is renamed to match and its Sites column shows Site B.</p></article>
+
+    <article class="test" data-id="F5"><header><span class="tid">F5</span><h4>Change a site’s invoicing on a saved proposal</h4><span class="role">Sales</span></header>
+      <ol><li>Look at the <b>Invoicing</b> section on the card.</li><li>Change Site B to <b>Six-monthly</b>.</li><li>Check every Site B line on the board.</li></ol>
+      <p class="expect"><strong>You should see</strong>Site A shows Quarterly and Site B Annually (as chosen in E2); the Warehouse is greyed at After each visit. Changing Site B shows a small spinner and keeps the new value. On the board, Invoicing Frequency is Six-Monthly on every Site B line (Asbestos, Legionella, Manual Handling and the moved Fire Risk Assessment).</p></article>
+
+    <article class="test" data-id="F6"><header><span class="tid">F6</span><h4>Delete a line</h4><span class="role">Sales</span></header>
+      <ol><li>Click the bin on the Warehouse line and click <b>Cancel</b>.</li><li>Click the bin again and click <b>Delete</b>.</li><li>Look at the card and search the board for the Warehouse line.</li></ol>
+      <p class="expect"><strong>You should see</strong>The dialog <b>Delete Quote</b> – “Are you sure you want to delete this quote? This action cannot be undone.” Cancel changes nothing. After Delete, the message <b>Quote deleted successfully</b>; the Warehouse heading and its invoicing row disappear, the card says 7 items and both totals drop by £700. The line is no longer on the Quotes &amp; Invoices board (it has been moved to the board’s archive).</p></article>
+
+    <article class="test" data-id="F7"><header><span class="tid">F7</span><h4>Editing a reviewed proposal sends it back to Generated</h4><span class="role">Sales</span></header>
+      <ol><li>Using the second part of this script, generate the proposal document and tick <b>Reviewed — no edits needed</b>, so the card shows <b>Reviewed</b>.</li><li>Edit Site A · Health and Safety Risk Assessment: change <b>Planned days per visit</b> to 2, add a reason and click <b>Update Quote</b>.</li><li>Look at the card and the board.</li></ol>
+      <p class="expect"><strong>You should see</strong>The pill goes back to <b>Generated</b>. <b>Upload edited file</b> and <b>Reviewed — no edits needed</b> appear again, and <b>Send</b> is greyed with “Review the proposal before sending”. On the board, all 7 lines have Status Generated, and that line has Planned Days per Visit 2.</p></article>
+
+    <article class="test" data-id="F8"><header><span class="tid">F8</span><h4>A sent proposal is locked</h4><span class="role">Sales</span></header>
+      <ol><li>Using the second part of this script, review the proposal again and send it to your own email address.</li><li>Look at the card.</li><li>Try the pencil, the bin and the Invoicing dropdowns.</li></ol>
+      <p class="expect"><strong>You should see</strong>The pill shows <b>Sent to client</b> and a grey note with a padlock: <b>This proposal has been sent. Use Revise to make changes.</b> Pencils, bins and invoicing dropdowns are greyed out. The card now offers <b>Revise</b>, <b>Plan presentation</b>, <b>Mark as presented</b> and <b>Record approval</b>.</p></article>
+
+    <article class="test" data-id="F9"><header><span class="tid">F9</span><h4>Revise a sent proposal (version 2)</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Revise</b>. Look at <b>Create new version</b> with the reason empty, then with 2 characters.</li><li>Type <i>TEST – client asked for a lower price</i> and click <b>Create new version</b>.</li><li>Look at the card, open <b>History</b> and <b>Change history</b>.</li><li>Check the board for your Quote No.</li></ol>
+      <p class="expect"><strong>You should see</strong>The <b>Revise proposal</b> dialog: “A new version is created and the current one becomes read-only…”. <b>Create new version</b> stays greyed until the reason has 3 characters. Then: <b>Version 2 created</b> – “7 items copied — the previous version is now read-only.” The card shows <b>Quote No … v2</b>, <b>Working on it (draft)</b>, no lock note, pencils and bins active, and the same totals. <b>History (1 older version)</b> lists Version 1 as “Superseded · read-only” with its sites and work types. Change history shows <b>Revised → v2</b> with your reason. On the board, the 7 old lines are Superseded and 7 new lines with the same names and Quote No are Working on it, with Presented? unticked and Presentation/Posting Date and Quote Proposal Document empty.</p></article>
+
+    <article class="test" data-id="F10"><header><span class="tid">F10</span><h4>A second proposal on the same opportunity</h4><span class="role">Sales</span></header>
+      <ol><li>Click <b>Create quote</b>. Keep TEST – Sam – Main Contact as recipient.</li><li>Choose COSHH Assessment, One-off, week 49, site Site A.</li><li>On its card set rates 75/25, Site work 2 and a selling price of <i>350</i>.</li><li>Click <b>Next</b>, then <b>Create 1 item</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Quote No … saved — 1 item</b> with a new Quote No higher than your first one (normally the next number). A second card appears separately with its own status, “1 item” and totals of £350.00. The new board line has the new Quote No and 🔗Recipient TEST – Sam – Main Contact, and it is added to the opportunity’s 🔗Related Quotes.</p></article>
+
+    <article class="test" data-id="F11"><header><span class="tid">F11</span><h4>Plan a presentation and mark it presented</h4><span class="tag">Overnight</span><span class="role">Sales</span></header>
+      <ol><li>Using the second part of this script, generate, review and send the second proposal (COSHH) to your own email address.</li><li>On its card click <b>Plan presentation</b>, pick tomorrow in <b>Presentation date</b> and click <b>Save date</b>.</li><li>Check Presentation/Posting Date on the board.</li><li>Tomorrow after 8am, check your monday.com notifications.</li><li>Click <b>Mark as presented</b>, read the dialog and confirm with <b>Mark as presented</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The message “Presentation planned for (tomorrow’s date)” with “The Owner will be reminded on the day.” The button changes to “Presentation (date)”, and the board line’s Presentation/Posting Date is tomorrow. Next morning you get a notification “Reminder: presentation of Quote No … is planned for today.” The dialog reads <b>Mark this proposal as presented?</b> – “Presented is ticked on every item in this proposal. This can't be undone from here.” Then <b>Marked as presented</b>, the buttons are replaced by “Presented”, and Presented? is ticked on the board.</p></article>
+
+    <article class="test" data-id="F12"><header><span class="tid">F12</span><h4>Record an approval while another proposal is still open</h4><span class="role">Sales / Quotes &amp; Orders team</span></header>
+      <ol><li>Using the second part of this script, generate, review and send version 2 of your first proposal to your own email address. Leave the COSHH proposal at Sent to client.</li><li>On the first proposal click <b>Record approval</b>. Choose <b>Live on Verbal</b> and look at the <b>Record approval</b> button; tick <b>CS Manager has authorised this verbal approval</b>.</li><li>Switch to <b>Purchase Order Document</b>. Enter Customer order ref <i>TEST-PO-001</i>, a PO expiry date next year, an Invoice address <i>TEST – Sam – 1 Test Street</i>, your own Invoicing email, and tick <b>New customer</b>.</li><li>Attach your small PDF, choose <b>Purchase order</b>, and click <b>Record approval</b>.</li><li>Check the card, the 7 lines on the board and the opportunity.</li></ol>
+      <p class="expect"><strong>You should see</strong>The dialog says “Applies to every item with this Quote No, sets them to Approved, and marks the deal Won.” <b>Order date</b> is today and <b>New business</b> is ticked. With Live on Verbal, <b>Record approval</b> is greyed until the CS Manager box is ticked. After saving: <b>Approval recorded</b> – “7 item(s) Approved — the deal stays open because it has other quotes in progress. Saved Q(Quote No)-PO.pdf.” The card shows <b>Approved</b> and no Revise button. Each line: Status Approved, Order Confirmation Type Purchase Order Document, Customer Order Reference TEST-PO-001, Order Date today, PO Expiry (dd/mm/yyyy), New Business and New Customer ticked, and the PDF in Quote Proposal Document. The opportunity has Confirmation Type, Customer Order Ref, PO Expiry, Order Date, New Business, New Customer, Invoice Address and Invoicing Email filled and the file in 🟠PO Document, but Deal Stage is <b>not</b> Won.</p></article>
+
+    <article class="test" data-id="F13"><header><span class="tid">F13</span><h4>Approving the last open proposal wins the deal</h4><span class="role">Sales / Quotes &amp; Orders team</span></header>
+      <ol><li>On the COSHH proposal click <b>Record approval</b>, keep <b>Customer Email</b>, enter ref <i>TEST-EMAIL-001</i> and click <b>Record approval</b>.</li><li>Check the opportunity on the board and in the app’s opportunity list.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Approval recorded</b> – “1 item(s) Approved and the deal is Won.” On the Opportunities board, Deal Stage is <b>Won</b>, Closed Date is today and Confirmation Type is Customer Email. In the app’s opportunity list the TEST opportunity shows a <b>Won</b> stage pill.</p></article>
+
+    <article class="test" data-id="F14"><header><span class="tid">F14</span><h4>Revise a proposal twice (version 3)</h4><span class="role">Sales</span></header>
+      <ol><li>Open <b>TEST – Sam – Other Deal</b> and create a one-line proposal: Health and Safety Risk Assessment, One-off, week 49, site TEST – Sam – Warehouse, selling price <i>500</i>.</li><li>Using the second part of this script, generate, review and send it to your own email address. Click <b>Revise</b>, give a reason and click <b>Create new version</b>.</li><li>Generate, review and send version 2 the same way, then click <b>Revise</b> again with a reason.</li><li>Look at the card.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Version 2 created</b>, then <b>Version 3 created</b>. The card shows <b>Quote No … v3</b> and <b>Working on it (draft)</b>, with the line in the normal table (with a pencil and bin) – not as a separate card marked <b>Legacy</b>. <b>History (2 older versions)</b> lists Versions 2 and 1, and Change history shows <b>Revised → v2</b> and <b>Revised → v3</b>.</p></article>
+
+    <article class="test" data-id="F15"><header><span class="tid">F15</span><h4>Older quotes from Sage are read-only</h4><span class="role">Sales</span></header>
+      <ol><li>Ask the project team for a migrated opportunity that has old quotes. Do not change anything on it.</li><li>Open it in the app and find a quote with a <b>Legacy</b> label.</li><li>Click its eye icon.</li></ol>
+      <p class="expect"><strong>You should see</strong>Each old quote is its own card with a grey <b>Legacy</b> label, its Quote No, Frequency, Visit Frequency or Number of Visits, and Work Types. The eye opens <b>Legacy quote (read-only)</b> with every field greyed out and only <b>Cancel</b> – there is no Update Quote button.</p></article>
+
+    <article class="test" data-id="F16"><header><span class="tid">F16</span><h4>Quotes dashboard: headline numbers and status filter</h4><span class="role">Sales manager</span></header>
+      <ol><li>Click <b>Dashboard</b> at the top right of the app.</li><li>Read the four tiles and the two charts.</li><li>Click the <b>Approved</b> chip under <b>Lines by status</b>.</li><li>Click <b>Show every status</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Quotes dashboard</b> – “All quotes across the team”, with <b>All quotes</b> selected. Tiles: <b>Quote lines</b> (every line, with total value), <b>With clients</b> (Sent to client lines, “… awaiting decision”), <b>Won</b> (Approved, Done and Paid lines, “… approved”) and <b>Win rate</b> = Won ÷ (Won + Declined + Cancelled), for example 3 won and 1 declined = 75%. Values add up each line’s Actual Selling Price (the per-visit price). Clicking Approved fades the other slices, puts the Approved count in the middle of the donut, adds “· Approved” to the subtitle and filters <b>Latest activity</b> and <b>All quote lines</b> to Approved lines – including “Quote No … is now Approved” under Today. <b>Show every status</b> clears the filter.</p></article>
+
+    <article class="test" data-id="F17"><header><span class="tid">F17</span><h4>Quotes dashboard: search the lines and see only your quotes</h4><span class="role">Sales</span></header>
+      <ol><li>In <b>All quote lines</b> type <i>TEST – Sam</i> in <b>Search quote lines…</b>.</li><li>Choose <b>Superseded</b> in the status filter, then <b>All statuses</b>.</li><li>Type <i>zzzz</i>, then clear the search.</li><li>Click <b>My quotes</b>. Click <b>Back to App</b>, then open the dashboard again.</li></ol>
+      <p class="expect"><strong>You should see</strong>The table lists your TEST lines with Quote No, Line, Opportunity, Owner, Status, Value and Updated. Superseded shows only your older versions (version 1 of the first proposal, and versions 1 and 2 from F14). <i>zzzz</i> shows <b>No quote lines match these filters.</b> <b>Load more</b> appears when there are more than 25 lines. <b>My quotes</b> changes the subtitle to “Quotes owned by (your name)” and shows only lines where you are the Owner on the Quotes &amp; Invoices board. The dashboard remembers <b>My quotes</b> when you come back.</p></article>
+  </div>
+</section>
+
+
+<section id="qb-generate" data-section="qb-generate">
+  <div class="sechead"><h2>G. Generating the proposal document</h2><span class="who">Sales or Quotes &amp; Orders team</span></div>
+  <p>Each proposal (one Quote No) produces one Word document that covers every line in it. When you click <strong>Generate proposal document</strong> the app first asks what goes into the document. It then builds the Word file, downloads it to your computer, saves it on every line of the proposal on the Quotes &amp; Invoices board and moves the proposal to <strong>Generated</strong>.</p>
+  <div class="callout">You need the TEST opportunity and proposals you built in sections A–F. The table below is what the expected results assume. Use your own first name instead of “Sam”, and your own email address on both TEST contacts. Quote Nos 12345–12348 are examples: read your own Quote No wherever you see them. The opportunity’s <strong>Owner</strong> must be a real person (you or a colleague). The app copies the Owner into <strong>Assigned Consultant</strong> on each line, and that person signs the letter.</div>
+  <div class="tablewrap"><table><thead><tr><th>Proposal</th><th>Contact</th><th>Lines (site – work type – frequency – price per visit)</th><th>Invoicing</th></tr></thead><tbody>
+    <tr><td>P1 (12345)</td><td>TEST contact 1 – First Name and postal address filled in on the People board</td><td>TEST – Sam – Riverside Offices: Legionella Risk Assessment – Repeat, Yearly, 2 years – £500. Riverside Offices: Water Quality Assessment – Repeat, Quarterly, 2 years – £150, with TEST-SAM-W1 and TEST-SAM-A1 ticked for Visit 1 in its Planned work grid. TEST – Sam – Hill House: Fire Risk Assessment – One-off – £800</td><td>Riverside: Quarterly. Hill House: fixed (one-off only)</td></tr>
+    <tr><td>P2 (12346)</td><td>TEST contact 1</td><td>Riverside Offices: Legionella Management Review – Repeat, 6-Monthly, 1 year – £400</td><td>Six-monthly</td></tr>
+    <tr><td>P3 (12347)</td><td>TEST contact 2 (a different People item, also your email)</td><td>Hill House: Asbestos Bulk Sampling – One-off – £300</td><td>Fixed</td></tr>
+    <tr><td>P4 (12348)</td><td>TEST contact 1</td><td>Riverside Offices: Asbestos Management Survey – Repeat, 2-Yearly, 4 years – £600. Hill House: Asbestos Bulk Sampling – One-off sold with a quantity of 3 – £200</td><td>Riverside: Annually</td></tr>
+  </tbody></table></div>
+  <div class="callout warn">Before you start this section, ask a Content admin to do these tests: M4 (technical specifications for Legionella Risk Assessment and Fire Risk Assessment), M6–M7 (the TEST-SAM test methods), M8 (the three TEST library documents) and N2 (the approval portal URL). If TEST-SAM-W1 and TEST-SAM-A1 did not exist when you built P1, edit the Water Quality Assessment line now and tick them.</div>
+  <div class="tests">
+    <article class="test" data-id="G1"><header><span class="tid">G1</span><h4>The “what goes into this document” window and its defaults</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Open the Quote Builder and open your TEST opportunity.</li><li>Find P1’s card (heading <strong>Quote No 12345</strong>). Check the status pill reads <strong>Working on it (draft)</strong>, the <strong>Send</strong> button is greyed out and the text beside it says <strong>Generate the proposal document first</strong>.</li><li>Click <strong>Generate proposal document</strong>.</li><li>Read the window, then close it with the X.</li></ol>
+      <p class="expect"><strong>You should see</strong>A window called <strong>What goes into this document</strong> with the text “In document order. Untick a part to leave it out, or replace it with a document from the library.” The <strong>Proposal title</strong> box is filled with “work types at sites”, for example “Legionella Risk Assessment, Water Quality Assessment and Fire Risk Assessment at TEST – Sam – Riverside Offices and TEST – Sam – Hill House”. The list shows, in this order: <strong>Cover letter</strong> and <strong>Programme schedule</strong> (ticked, greyed, <strong>Always included</strong>); <strong>Legionella Risk Assessment technical specification</strong> and <strong>Fire Risk Assessment technical specification</strong> (ticked, <strong>Standard content</strong>). There is one such row only for each work type with saved text in Admin → Technical specifications. Next come <strong>WEA test schedule and test methods</strong> (ticked; shown only because the Water Quality Assessment line has tests planned), <strong>Terms and conditions</strong> (ticked), <strong>Order confirmation form</strong> (unticked, <strong>Left out</strong>) and <strong>Signature page</strong> (unticked; this company is on Electronic approval). Every optional row has a <strong>Replace with…</strong> button. Below the list you see <strong>Add document</strong>, a <strong>Remember for</strong> (company name) tick box and <strong>Generate document</strong>. After you close the window nothing has changed and the pill still reads Working on it (draft).</p></article>
+
+    <article class="test" data-id="G2"><header><span class="tid">G2</span><h4>Generate the document and see where it is saved</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 click <strong>Generate proposal document</strong>, leave every choice as it is and click <strong>Generate document</strong>.</li><li>Wait for the download, then read the window that opens and close it.</li><li>Look at P1’s card.</li><li>Open the Quotes &amp; Invoices board and find P1’s three lines.</li></ol>
+      <p class="expect"><strong>You should see</strong>The button shows <strong>Generating…</strong>, then a Word file named <strong>Q12345-v1-draft.docx</strong> downloads. A green message says “Q12345-v1-draft.docx saved to 3 items” with “2 site sections, N tech specs, total programme value £3,000.00 excluding VAT”. N is the number of work types with a saved specification. If a part is missing, you get the amber version of this message instead (see G9). A window called <strong>Programme schedule</strong> shows “Programme duration: 2 years”. It has a card for Riverside Offices (“8 x quarterly invoices at £275.00 excluding VAT”, “£2,200.00 excluding VAT”), a card for Hill House (“Invoiced after each visit is completed.”, “£800.00 excluding VAT”) and the line “Total programme value: £3,000.00 excluding VAT”. On the card, the pill now reads <strong>Generated</strong>. It shows “Current document: Q12345-v1-draft.docx (draft, v1)” as a link, and the button now reads <strong>Regenerate document</strong>. On the board, all three lines have Status = Generated, and their <strong>Quote Proposal Document</strong> column holds Q12345-v1-draft.docx.</p></article>
+
+    <article class="test" data-id="G3"><header><span class="tid">G3</span><h4>Change the proposal title (the bold subject line)</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 click <strong>Regenerate document</strong>.</li><li>Replace the <strong>Proposal title</strong> with “TEST – Sam – Water hygiene programme”.</li><li>Check the hint under the box, then click <strong>Generate document</strong> and open the Word file.</li><li>Click <strong>Regenerate document</strong> again and look at the title box.</li><li>Click the <strong>Use “…”</strong> link under the box, then generate again.</li></ol>
+      <p class="expect"><strong>You should see</strong>When you change the title, a link <strong>Use “(default title)”</strong> appears after “The bold subject line of the letter.” In the Word file, the bold line under “Dear …” reads “TEST – Sam – Water hygiene programme”. When you reopen the window, the box still shows your title, because it is saved for this Quote No. Clicking the link puts the default title back. After you generate again, the letter shows the default title.</p></article>
+
+    <article class="test" data-id="G4"><header><span class="tid">G4</span><h4>Leave out the terms and add the order confirmation form</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 click <strong>Regenerate document</strong>.</li><li>Untick <strong>Terms and conditions</strong> and tick <strong>Order confirmation form</strong>.</li><li>Click <strong>Generate document</strong> and open the Word file.</li><li>Reopen the window (Regenerate document) and check the ticks.</li></ol>
+      <p class="expect"><strong>You should see</strong>When you untick Terms and conditions it reads <strong>Left out</strong>; when you tick Order confirmation form it reads <strong>Standard content</strong>. The Word file has no Terms and Conditions page and has an <strong>Order Confirmation</strong> page near the end (H9 checks its content). When you reopen, the ticks are back to the defaults from G1, because nothing was remembered.</p></article>
+
+    <article class="test" data-id="G5"><header><span class="tid">G5</span><h4>Replace a part with a Word document from the library</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Needs M8: “TEST – Sam – Framework terms” (Word, Terms and conditions, your TEST company) and “TEST – Sam – Other company terms” (Word, Terms and conditions, a different TEST company).</li><li>On P1 click <strong>Regenerate document</strong>, then <strong>Replace with…</strong> on the <strong>Terms and conditions</strong> row.</li><li>Look at the list, choose “TEST – Sam – Framework terms”, then generate and open the Word file.</li><li>Open <strong>Replace with…</strong> on a technical specification row and read the list.</li><li>Reopen the window. On the Terms and conditions row choose <strong>Replace with…</strong> → <strong>Use the standard content</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The menu is headed <strong>Terms and conditions</strong>. It lists your company’s document first, with the company name on the right, followed by any document with no company. “TEST – Sam – Other company terms” is not listed. After you choose, the row reads “Replaced with TEST – Sam – Framework terms”. In the Word file, the terms page keeps the usual page header (Terms and Conditions (Version …)), but its content is the library document’s headings, paragraphs, bullets and tables in the house font, with none of the standard clauses. If no technical specification documents exist, the spec menu says “No technical specification documents in the library yet.” <strong>Use the standard content</strong> sets the row back to <strong>Standard content</strong>.</p></article>
+
+    <article class="test" data-id="G6"><header><span class="tid">G6</span><h4>Add a library PDF to the end of the proposal</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Needs M8: “TEST – Sam – Site plan” (PDF, Other, no company).</li><li>On P1 click <strong>Regenerate document</strong> → <strong>Add document</strong> and pick “TEST – Sam – Site plan”.</li><li>Remove it with its X, add it again, then click <strong>Generate document</strong> and open the Word file.</li></ol>
+      <p class="expect"><strong>You should see</strong>The <strong>Add document</strong> menu shows each document with its type on the right (“Other”). The added row reads “TEST – Sam – Site plan” with “Added document · PDF, merged after the document”, and the X removes it. The Word file ends with a page whose header is “TEST – Sam – Site plan”. Its only text is “Attached: TEST – Sam – Site plan”. The PDF’s own pages are not in the Word file. They are added after the proposal in the PDF that is made when you send it (checked in J1).</p></article>
+
+    <article class="test" data-id="G7"><header><span class="tid">G7</span><h4>Manual approval companies get a signature page</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>At the top of the opportunity screen, change <strong>Signing preference</strong> to <strong>Manual approval</strong>.</li><li>On P1 click <strong>Regenerate document</strong> and look at the <strong>Signature page</strong> row.</li><li>Generate and open the Word file.</li><li>Leave the company on Manual approval: J1 and J2 rely on it, and J6 switches it back.</li></ol>
+      <p class="expect"><strong>You should see</strong>A message says “Signing preference set to Manual approval”, and the hint under the box changes to “Proposals include a signature page”. The company’s Signing Preference on the Companies board changes. In the window, <strong>Signature page</strong> is now ticked by default. The Word file has a page headed <strong>Signature</strong> after the terms or order confirmation. It contains “Quote No 12345 — (company name). Please sign and return this page, or upload it using the link in our email.” and a two-column table with the rows Name, Position, Email, Signature and Date, all left blank.</p></article>
+
+    <article class="test" data-id="G8"><header><span class="tid">G8</span><h4>Remember the choices for this company</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 click <strong>Regenerate document</strong>. Tick <strong>Order confirmation form</strong>, replace Terms and conditions with “TEST – Sam – Framework terms” and add “TEST – Sam – Site plan”.</li><li>Tick <strong>Remember for</strong> (company) and click <strong>Generate document</strong>.</li><li>Click <strong>Regenerate document</strong> on P1, then <strong>Generate proposal document</strong> on P2, and look at both windows.</li><li>To tidy up, on P1 untick Order confirmation form, set the terms back to <strong>Use the standard content</strong>, keep the Site plan, tick <strong>Remember for</strong> again and generate.</li></ol>
+      <p class="expect"><strong>You should see</strong>Both windows (P1 and P2, same company) open with your three choices already set. The description ends “Preselected from the choices saved for (company).” The Remember tick box itself starts unticked each time. A proposal for a different company is not affected. After the tidy-up, the next window shows standard content plus the Site plan.</p></article>
+
+    <article class="test" data-id="G9"><header><span class="tid">G9</span><h4>Warnings after generating</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Ask a Content admin to confirm that Water Quality Assessment says “Not saved yet” in Admin → Technical specifications.</li><li>Make sure the person who signs the letter (the Assigned Consultant) has no signature image. If that is you, remove your image on the <strong>Signature</strong> page and click <strong>Save</strong>.</li><li>Regenerate P1 with the default choices and open the Word file.</li></ol>
+      <p class="expect"><strong>You should see</strong>An amber message instead of the green one: “Q12345-v1-draft.docx generated, but no technical specification set for Water Quality Assessment (Admin → Technical specifications) and no signature image for (name) — a blank space was left (Signature page). 2 site sections, 2 tech specs, total programme value £3,000.00 excluding VAT”. If a planned test has no description or statement in Admin → Test methods, the message also says “no test method details for (code) (Admin → Test methods)”. The file is still downloaded and saved. The letter leaves a blank gap above the signer’s name, and there is no Water Quality Assessment specification page. Put your signature back afterwards (L7).</p></article>
+
+    <article class="test" data-id="G10"><header><span class="tid">G10</span><h4>No Assigned Consultant: warning, signer and Ref</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On the Quotes &amp; Invoices board, clear <strong>Assigned Consultant</strong> on all three P1 lines (TEST rows only).</li><li>In the app click <strong>Regenerate document</strong> on P1 and read the top of the window.</li><li>Generate anyway and open the Word file.</li><li>Put the Assigned Consultant back on all three lines, regenerate and open the file again.</li></ol>
+      <p class="expect"><strong>You should see</strong>A red box at the top of the window says “Set the Assigned Consultant – the letter is signed by them.” Without a consultant, the letter is signed by you: your name in bold, then your job title. The top right reads just “Ref: 12345”. With the consultant back, the warning has gone, the letter is signed by the consultant and the Ref reads “consultant initials/your initials/Quote No”. For example, consultant Jane Smith and you Sam Brown gives “Ref: JS/SB/12345”. Integration accounts such as Mutherboard never sign a letter; they count as “no consultant”.</p></article>
+  </div>
+</section>
+
+<section id="qb-contents" data-section="qb-contents">
+  <div class="sechead"><h2>H. Checking what is in the document</h2><span class="who">Sales or Quotes &amp; Orders team</span></div>
+  <p>Open the latest Word file: click the <strong>Current document</strong> link, or use the downloaded file. Page 1 is the cover letter on letterhead. Every part after the letter starts on a new page, with its title in green on the left, the logo on the right and a green line underneath. The programme schedule works out a value and an invoicing sentence for each site.</p>
+  <div class="tablewrap"><table><thead><tr><th>P1 – what the Programme Schedule should show</th><th>Number of visits</th><th>Visit frequency</th><th>Fee per visit</th><th>Value (how it is worked out)</th></tr></thead><tbody>
+    <tr><td>Riverside Offices – Legionella Risk Assessment</td><td>2</td><td>Yearly</td><td>£500.00</td><td>£500 × 1 visit a year × 2 years = £1,000.00</td></tr>
+    <tr><td>Riverside Offices – Water Quality Assessment</td><td>8</td><td>Quarterly</td><td>£150.00</td><td>£150 × 4 visits a year × 2 years = £1,200.00</td></tr>
+    <tr><td>Riverside Offices – site total and invoicing</td><td colspan="3">Quarterly: 2 years × 4 = 8 invoices; £2,200 ÷ 8 = £275.00</td><td>£2,200.00</td></tr>
+    <tr><td>Hill House – Fire Risk Assessment</td><td>1</td><td>One-off</td><td>£800.00</td><td>£800.00 – “Invoiced after each visit is completed.”</td></tr>
+    <tr><td>Whole proposal</td><td colspan="3">Programme duration: 2 years (the longest contract period)</td><td>£3,000.00</td></tr>
+  </tbody></table></div>
+  <div class="tablewrap"><table><thead><tr><th>Riverside Offices invoicing (P1, £2,200.00 over 2 years)</th><th>Invoicing details wording</th></tr></thead><tbody>
+    <tr><td>After each visit</td><td>Invoiced after each visit is completed.</td></tr>
+    <tr><td>Monthly</td><td>24 x monthly invoices at £91.67 excluding VAT</td></tr>
+    <tr><td>Quarterly</td><td>8 x quarterly invoices at £275.00 excluding VAT</td></tr>
+    <tr><td>Six-monthly</td><td>4 x six-monthly invoices at £550.00 excluding VAT</td></tr>
+    <tr><td>Annually</td><td>2 x annually invoices at £1,100.00 excluding VAT</td></tr>
+  </tbody></table></div>
+  <div class="tests">
+    <article class="test" data-id="H1"><header><span class="tid">H1</span><h4>Page 1: letterhead, reference and address</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Open P1’s latest Word file and look at page 1.</li><li>On the People board, clear TEST contact 1’s <strong>First Name</strong>, regenerate P1 and look at the greeting.</li><li>Clear TEST contact 1’s address columns, regenerate and look at the address block.</li><li>Put the First Name and address back and regenerate.</li></ol>
+      <p class="expect"><strong>You should see</strong>The logo at the top right. On one line, <strong>Private &amp; Confidential</strong> in bold on the left and “Ref: JS/SB/12345” on the right. Below, one line each: the contact’s name, job title (only if filled in), company name and each filled address line from the People board. Then today’s date on the right (for example “10 November 2026”), and “Dear (First Name)” with no comma. With First Name empty, the greeting uses the first word of the contact’s name. With no contact address, the address lines come from the opportunity’s Invoice Address, split at commas and line breaks. The page 1 footer has the certification image at the bottom left. At the bottom right are the letterhead lines, the first (“Assurity Consulting Limited”) in bold orange.</p></article>
+
+    <article class="test" data-id="H2"><header><span class="tid">H2</span><h4>Letter wording, standard paragraphs and sign-off</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Make sure P1 has at least one standard paragraph chosen in the wizard (Part 1).</li><li>Read the letter from the subject line to the end.</li></ol>
+      <p class="expect"><strong>You should see</strong>In order: the bold subject line (the proposal title); the opening paragraph “Thank you for your enquiry. Please find below our proposal for (work types) at (site names). A technical specification has been provided for your review, and all fees exclude VAT.”; each chosen standard paragraph (its title in bold, then its text) in the order chosen on the quote; the next-steps paragraph “You will receive an email from us with a secure link to this proposal…”; “Please do not hesitate to contact me if you have any questions.”; “Yours sincerely” (no comma); the signer’s signature image (or a blank gap); the signer’s name in bold; their job title. This is the default wording; if a Content admin has changed the Letter template, the new wording appears instead. The company is always written as “Assurity Consulting”.</p></article>
+
+    <article class="test" data-id="H3"><header><span class="tid">H3</span><h4>Programme schedule: tables and totals per site</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Go to the <strong>Programme Schedule</strong> page of P1’s Word file.</li><li>Compare every number with the first table above.</li></ol>
+      <p class="expect"><strong>You should see</strong>“Programme duration: 2 years”. For each site, a bold <strong>Location:</strong> line with the site name, its site code in brackets (if it has one) and the site address. Then a table with the headings Work type, Number of visits, Visit frequency and Fee per visit, with the rows exactly as in the table above. Then “Invoicing details: 8 x quarterly invoices at £275.00 excluding VAT” and, in bold orange, “Total programme value for this site: £2,200.00 excluding VAT”. Hill House shows “Invoicing details: Invoiced after each visit is completed.” and “Total programme value for this site: £800.00 excluding VAT”. The page ends with “Total programme value: £3,000.00 excluding VAT” in bold orange. The totals match the Programme schedule window you saw after generating.</p></article>
+
+    <article class="test" data-id="H4"><header><span class="tid">H4</span><h4>Invoicing choices per site and the instalment maths</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Under P1’s lines, find the <strong>Invoicing</strong> section with one picker per site.</li><li>Try to change Hill House.</li><li>Change Riverside Offices to <strong>Monthly</strong>, regenerate and check the wording. Repeat for <strong>Six-monthly</strong>, <strong>Annually</strong> and <strong>After each visit</strong>.</li><li>Set Riverside Offices back to <strong>Quarterly</strong> and regenerate.</li></ol>
+      <p class="expect"><strong>You should see</strong>Hill House’s picker is greyed out, with the note “One-off work only — invoiced after each visit.” Each Riverside change saves straight away to <strong>Invoicing Frequency</strong> on both Riverside lines on the Quotes &amp; Invoices board. The document only changes after you regenerate. The “Invoicing details” wording and the Programme schedule window match the second table above each time. The site total stays at £2,200.00.</p></article>
+
+    <article class="test" data-id="H5"><header><span class="tid">H5</span><h4>The opportunity’s Invoice Frequency is filled in once</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On the Opportunities board, clear <strong>Invoice Frequency</strong> on your TEST opportunity.</li><li>Regenerate P1 (Riverside Quarterly, Hill House after each visit) and read the Programme schedule window.</li><li>Generate P2 (one site, Six-monthly) and read the window.</li><li>Regenerate P2.</li></ol>
+      <p class="expect"><strong>You should see</strong>After P1, the window has no line about Invoice Frequency and the opportunity’s Invoice Frequency stays blank, because the sites disagree. After P2, the window ends with “The deal's Invoice Frequency was set to Six-Monthly.” and the board shows Six-Monthly. After regenerating P2 the line does not appear and the value is unchanged, because the app never overwrites a filled-in Invoice Frequency.</p></article>
+
+    <article class="test" data-id="H6"><header><span class="tid">H6</span><h4>Edge cases: two-yearly visits and one-off quantities (P4)</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Generate P4 and open its Programme Schedule page.</li></ol>
+      <p class="expect"><strong>You should see</strong>“Programme duration: 4 years”. Riverside Offices: Asbestos Management Survey | 2 | Every two years | £600.00 (£600 × 0.5 visits a year × 4 years = £1,200.00), with “Invoicing details: 4 x annually invoices at £300.00 excluding VAT” (4 years × 1 = 4 invoices; £1,200 ÷ 4) and a site total of £1,200.00. Hill House: Asbestos Bulk Sampling | 3 | One-off | £200.00 (£200 × 3 = £600.00), with “Invoiced after each visit is completed.” and a site total of £600.00. “Total programme value: £1,800.00 excluding VAT”.</p></article>
+
+    <article class="test" data-id="H7"><header><span class="tid">H7</span><h4>Technical specification pages</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Needs M4. In P1’s Word file, find the specification pages.</li><li>Compare them with Admin → Technical specifications for the same work types (ask a Content admin to show you).</li></ol>
+      <p class="expect"><strong>You should see</strong>One page set per work type with saved text, headed “(work type) Technical Specification”, for example “Legionella Risk Assessment Technical Specification”. The sections appear in the same order as in Admin. Headings are bold, sub-headings are smaller bold lines, and lines that start with “• ” or “- ” are bullets. A work type used at two sites gets only one specification. A work type with no saved text gets no page.</p></article>
+
+    <article class="test" data-id="H8"><header><span class="tid">H8</span><h4>WEA test schedule and test method statements</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Needs M6–M7: TEST-SAM-W1 (Category Water, UKAS) and TEST-SAM-A1 (Category Air, Not UKAS accredited, with a statement), both ticked on P1’s Water Quality Assessment line.</li><li>Find the page headed <strong>Test Method Statements / Technical Specification</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The heading “Schedule of tests and frequencies”, then “Location: TEST – Sam – Riverside Offices” (with its site code in brackets if it has one). Under it are two tables. “Air quality and comfort conditions | Frequency” has the row “TEST Sam air sample *” with “Quarterly”. “Water quality and washroom hygiene standards | Frequency” has the row “TEST Sam water sample” with “Quarterly” and no *. The UKAS paragraph follows (“Tests marked * are not included in our UKAS accreditation schedule…”), shown because one test is not UKAS. If the Letter template has General information, a “General information” heading and its text come next. Then each test gets a heading (with * when not UKAS), followed by only the filled-in sub-headings in this order: Objectives, Equipment, Rationale and Method, Precautions, References, Colour-coding rules.</p></article>
+
+    <article class="test" data-id="H9"><header><span class="tid">H9</span><h4>Terms and conditions and the order confirmation form</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Regenerate P1 with <strong>Order confirmation form</strong> ticked and Terms and conditions on standard content.</li><li>Ask a Content admin for the current <strong>T&amp;Cs version label</strong> and clauses in Admin → Letter template.</li><li>Read both pages.</li></ol>
+      <p class="expect"><strong>You should see</strong>The terms page header reads “Terms and Conditions (Version 8 – 1 September 2024)”, or the current label. Each clause has its heading in bold and the same wording as in Admin, with “• ” lines as bullets. The <strong>Order Confirmation</strong> page starts “To accept this proposal (Quote 12345), please complete and return this form.” Then comes a “Confirmation type” table with empty boxes for Customer Email, Purchase Order Document and Signed order confirmation. A “Detail” table follows, with Quote No filled in as 12345 and these rows blank: Customer order reference, Order date, PO expiry (repeat work), PO number (if raised later), Invoice address, Invoicing email, Invoicing contact name, Approved by (name), Position and Date. The Letter template’s “Note under the form” text comes after it, if set.</p></article>
+  </div>
+</section>
+
+<section id="qb-review" data-section="qb-review">
+  <div class="sechead"><h2>I. Review and regenerate</h2><span class="who">Sales or Quotes &amp; Orders team</span></div>
+  <p>Every proposal must be reviewed before it can be sent. You either upload your edited Word file or tick that no edits are needed. Any change made after the review sends the proposal back to Generated, so the document is always checked again.</p>
+  <div class="tests">
+    <article class="test" data-id="I1"><header><span class="tid">I1</span><h4>Mark a proposal reviewed with no edits</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P2 (Generated in H5), check the buttons next to Send.</li><li>Tick <strong>Reviewed — no edits needed</strong>.</li><li>Check the card and the Quotes &amp; Invoices board.</li></ol>
+      <p class="expect"><strong>You should see</strong>Before you tick: <strong>Upload edited file</strong>, the tick box and “Review the proposal before sending”, with <strong>Send</strong> greyed out. After: the message “Proposal marked as reviewed”; the pill reads <strong>Reviewed</strong>; the tick box and upload button are replaced by a green tick and “Reviewed”; <strong>Send</strong> is active. A small tick box also appears in front of <strong>Quote No 12346</strong> (used in K1). P2’s line has Status = Reviewed on the board.</p></article>
+
+    <article class="test" data-id="I2"><header><span class="tid">I2</span><h4>Upload an edited Word file</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 (Generated), click <strong>Upload edited file</strong>, switch the file picker to show all files and pick a PDF.</li><li>Open P1’s current Word file. At the end of the letter, add the line “TEST edit by Sam” and save it under any name, for example “my changes.docx”.</li><li>Click <strong>Upload edited file</strong> and pick that file.</li><li>Check the card and the board.</li></ol>
+      <p class="expect"><strong>You should see</strong>The PDF is refused with “Please upload a Word (.docx) file” and nothing changes. The Word file is accepted with the message “Q12345-v1-edited.docx saved — proposal reviewed”, because the app renames it. The card shows “Current document: Q12345-v1-edited.docx (edited, v1)”, the pill reads <strong>Reviewed</strong> and <strong>Send</strong> is active. On the board, every P1 line has Q12345-v1-edited.docx added to <strong>Quote Proposal Document</strong> and Status = Reviewed.</p></article>
+
+    <article class="test" data-id="I3"><header><span class="tid">I3</span><h4>A change after review sends it back to Generated</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P2 (Reviewed), click the pencil on its line and change the price per visit from £400 to £420. Save it (the edit window is covered in Part 1).</li><li>Check the pill, the Send button and the board.</li><li>Tick <strong>Reviewed — no edits needed</strong> again, then click <strong>Regenerate document</strong> → <strong>Generate document</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>After the price change, the pill goes back to <strong>Generated</strong>, the text reads “Review the proposal before sending”, Send is greyed out and the board Status is Generated. After you reviewed it again and regenerated, it is back to <strong>Generated</strong> once more: any new document needs a fresh review. The Programme schedule window now shows £840.00 for P2 (£420 × 2 visits a year × 1 year) and “2 x six-monthly invoices at £420.00 excluding VAT”.</p></article>
+
+    <article class="test" data-id="I4"><header><span class="tid">I4</span><h4>The regenerated document is the one that will be sent</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P2 tick <strong>Reviewed — no edits needed</strong>, then click <strong>Send</strong>.</li><li>When the PDF is ready, read the “Saved as” line and click <strong>Download PDF</strong>.</li><li>Open the PDF and check the price. Close the window without sending.</li></ol>
+      <p class="expect"><strong>You should see</strong>“Saved as Q12346-v1-sent.pdf … from Q12346-v1-draft.docx (draft)”. The PDF’s programme schedule shows Fee per visit £420.00, “2 x six-monthly invoices at £420.00 excluding VAT” and a total of £840.00. The message box says the total contract value is £840.00. If the PDF still shows £400.00, the app has sent an older draft: record this as a fail.</p></article>
+  </div>
+</section>
+
+<section id="qb-send" data-section="qb-send">
+  <div class="sechead"><h2>J. Sending a proposal</h2><span class="who">Sales or Quotes &amp; Orders team</span></div>
+  <p>Send turns the reviewed Word file into a PDF in your browser and saves the PDF on the proposal. It then emails the contact from the shared quotes mailbox with a secure link to the Approval Portal. Nothing is attached to the email: the client downloads the PDF from the portal. The proposal is then locked until it is revised. The portal itself is tested in its own script, so here you only check that the email and link arrive.</p>
+  <div class="callout warn">Every contact you send to must be a TEST contact with your own email address. Never send to a real client.</div>
+  <div class="tests">
+    <article class="test" data-id="J1"><header><span class="tid">J1</span><h4>The email window and the PDF</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 (Reviewed with your edited file, company on Manual approval) click <strong>Send</strong>.</li><li>Wait for the conversion, then read every part of the window.</li><li>Click <strong>Download PDF</strong> and page through the PDF.</li></ol>
+      <p class="expect"><strong>You should see</strong>The title <strong>Email proposal — Quote No 12345</strong>, then “Converting the reviewed document to PDF…” for a few seconds. Then <strong>To</strong>: “(contact name) &lt;your email&gt;”, and <strong>Saved as</strong>: “Q12345-v1-sent.pdf”, its size in MB and “from Q12345-v1-edited.docx (edited upload)”. <strong>Subject</strong> reads “Your quotation from Assurity Consulting — Quote No 12345” (if the template has not been changed). <strong>Message</strong> starts “Dear (First Name),”, gives the total as £3,000.00 and contains the line “Please sign and return the signature page, or upload it using the link.” just before {{approvalLink}}. It ends with the consultant’s name. The hint under it says to keep {{approvalLink}} on its own line. <strong>Send from</strong> offers Gmail and Outlook. The PDF matches the Word file, including your “TEST edit by Sam” line, the logo, letter, programme schedule, specifications, WEA pages, terms and signature page. After the last page come the Site plan PDF’s own pages, full size and without the Assurity Consulting header and footer.</p></article>
+
+    <article class="test" data-id="J2"><header><span class="tid">J2</span><h4>Send with your own wording and check what arrives</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>In the same window, add “ – TEST” to the end of the Subject.</li><li>In the Message, add a line “TEST – Sam – extra line” and delete the {{approvalLink}} line. Read the hint.</li><li>Choose <strong>Gmail</strong> and click <strong>Send email</strong>.</li><li>Open the email in your inbox and click the button.</li></ol>
+      <p class="expect"><strong>You should see</strong>The hint now ends “(it is missing, so the button will be added at the end).” The window changes to <strong>Sent</strong>: “Quote No 12345 was emailed from Gmail to (your email).” with a <strong>Done</strong> button. The email comes from the shared quotes mailbox, not your own address. It has your edited subject and message, with your extra line and the signature-page sentence. At the very end is a <strong>View and approve your quote</strong> button and the small line “If the button does not work, copy this link into your browser:”. The link ends “?t=…&amp;hideWatermark=true”. The button opens a page headed “Assurity Consulting · Secure proposal” showing Quote No 12345, the company name, “Prepared for (contact) by (consultant).” and <strong>Download the full proposal (PDF)</strong>, which gives the same PDF. Do not approve it. Next time you send, Gmail is already chosen in this browser.</p></article>
+
+    <article class="test" data-id="J3"><header><span class="tid">J3</span><h4>What changes after sending, and the lock</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Look at P1’s card in the app.</li><li>Check P1’s lines on the Quotes &amp; Invoices board.</li><li>Open the TEST opportunity on the Opportunities board and look at Deal Stage and its activity timeline.</li></ol>
+      <p class="expect"><strong>You should see</strong>The pill reads <strong>Sent to client</strong>. A grey box says “This proposal has been sent. Use Revise to make changes.” There is no Generate or Regenerate button. The pencil and bin on each line and the Invoicing pickers are greyed out. “Current document: Q12345-v1-sent.pdf (sent, v1)”. Next to Revise, the review buttons are replaced by <strong>Plan presentation</strong>, <strong>Mark as presented</strong> and the Record approval button (Part 1). On the board, every P1 line has Status = Sent to client and Q12345-v1-sent.pdf in <strong>Quote Proposal Document</strong>; Presented? and Presentation/Posting Date are unchanged. On the opportunity, Deal Stage = Proposal (unless it was already Won or Lost). The timeline has a “Quote sent” entry, “Quote No 12345 emailed to (your email)”, listing the date, recipient, Quote No, subject and link.</p></article>
+
+    <article class="test" data-id="J4"><header><span class="tid">J4</span><h4>Sending is blocked when the contact has no email</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Generate P3 and tick <strong>Reviewed — no edits needed</strong>.</li><li>On the People board, clear TEST contact 2’s Email.</li><li>On P3 click <strong>Send</strong> and wait for the PDF.</li><li>Close the window and put the email address back. Leave P3 Reviewed and unsent for K1.</li></ol>
+      <p class="expect"><strong>You should see</strong><strong>To</strong> shows “(name) &lt;no email address&gt;”. A red box says “The proposal contact has no email address.” <strong>Send email</strong> is greyed out; <strong>Download PDF</strong> still works. Nothing changes on the board.</p></article>
+
+    <article class="test" data-id="J5"><header><span class="tid">J5</span><h4>Plan a presentation and mark it as presented</h4><span class="tag">Overnight</span><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 (Sent to client) click <strong>Plan presentation</strong>, pick tomorrow’s date as the <strong>Presentation date</strong> and click <strong>Save date</strong>.</li><li>Check the button and the board.</li><li>The next morning, after 8am, check the monday notifications of the quote’s Owner (or the Assigned Consultant if there is no Owner).</li><li>Click <strong>Mark as presented</strong> and confirm.</li></ol>
+      <p class="expect"><strong>You should see</strong>The message “Presentation planned for (date, e.g. 11 Nov 2026)” with “The Owner will be reminded on the day.” The button now reads “Presentation 11 Nov 2026”, and every P1 line has that date in <strong>Presentation/Posting Date</strong>. Next morning the Owner gets “Reminder: presentation of Quote No 12345 is planned for today.” Mark as presented asks “Mark this proposal as presented?” and warns that it can’t be undone from here. After you confirm, you see “Marked as presented”, the buttons are replaced by “Presented”, and <strong>Presented?</strong> is ticked on every line.</p></article>
+
+    <article class="test" data-id="J6"><header><span class="tid">J6</span><h4>Version 2: file names and the old link</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>On P1 click <strong>Revise</strong>, give a reason and confirm (the revise window is covered in Part 1).</li><li>Click the button in the J2 email again.</li><li>Generate the new version, tick <strong>Reviewed — no edits needed</strong> and click <strong>Send</strong>. Read the “Saved as” line and send it.</li><li>Click the button in the new email.</li><li>Finally, set <strong>Signing preference</strong> back to <strong>Electronic approval</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>After Revise, the card heading reads “Quote No 12345 v2”, the pill reads Working on it (draft), there is no Current document line, and <strong>History (1 older version)</strong> lists Version 1 as “Superseded · read-only”. The old email’s page now says “This link has expired or has been replaced by a newer proposal. Please contact us for an up-to-date link.” The new files are Q12345-v2-draft.docx and Q12345-v2-sent.pdf. The letter’s Ref is the same as before (it has no version number). The new email’s button opens the v2 proposal.</p></article>
+  </div>
+</section>
+
+<section id="qb-bundle" data-section="qb-bundle">
+  <div class="sechead"><h2>K. Sending several proposals in one email</h2><span class="who">Sales or Quotes &amp; Orders team</span></div>
+  <p>Reviewed proposals for the same contact can go out together in one email. Each proposal gets its own button and its own link, and each is updated separately on the board.</p>
+  <div class="tests">
+    <article class="test" data-id="K1"><header><span class="tid">K1</span><h4>Choose proposals to send together, and the same-contact rule</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Make sure P2, P3 and P4 are Reviewed (generate and tick if needed). P1 v2 is already sent.</li><li>Tick the small box in front of <strong>Quote No 12346</strong> (P2).</li><li>Tick P4’s box, then tick P3’s box.</li><li>Untick P3, then click <strong>Clear</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Tick boxes only on Reviewed proposals, with none on P1. With P2 ticked, a bar appears: “1 proposal selected”, “Select at least 2 reviewed proposals to send together”, with <strong>Send 1 together</strong> greyed out. With P4 added: “2 proposals selected” and an active <strong>Send 2 together</strong>. With P3 added (a different contact), red text says “These proposals are for different contacts — they can’t go in one email.” and the button is greyed out. Clear unticks everything and the bar disappears.</p></article>
+
+    <article class="test" data-id="K2"><header><span class="tid">K2</span><h4>Send two proposals in one email</h4><span class="role">Sales or Quotes &amp; Orders</span></header>
+      <ol><li>Tick P2 and P4, click <strong>Send 2 together</strong> and wait for the conversion.</li><li>Read the window, choose <strong>Gmail</strong> and click <strong>Send one email</strong>.</li><li>Open the email and click each button.</li><li>Check both proposals in the app, on the board and on the opportunity.</li></ol>
+      <p class="expect"><strong>You should see</strong>A window titled <strong>Email 2 proposals together</strong>, then “Converting the reviewed documents to PDF…”. It shows “To (contact) &lt;your email&gt;” and two rows, one for each PDF (Q12346-v1-sent.pdf and Q12348-v1-sent.pdf), each with its size and “Button: View and approve Quote No …”. There are no Subject or Message boxes. After sending: <strong>Sent</strong>, “2 proposals were emailed together from Gmail to (your email).” One email arrives. Its subject carries both numbers (e.g. “… Quote No 12346, 12348”) and its total is £2,640.00 (P2 £840.00 + P4 £1,800.00). It has two buttons, “View and approve Quote No 12346” and “View and approve Quote No 12348”, and each opens its own proposal and PDF. Both cards now read <strong>Sent to client</strong> and are locked. Each proposal’s lines hold their own -sent.pdf, Deal Stage = Proposal, and the opportunity timeline has one “Quote No … emailed to …” entry per proposal.</p></article>
+  </div>
+</section>
+
+<section id="qb-admin-letter" data-section="qb-admin-letter">
+  <div class="sechead"><h2>L. Admin access, letter template and signatures</h2><span class="who">Content admin (L7: any user)</span></div>
+  <p>Only Content admins see the <strong>Admin</strong> button. The Letter template holds the house style and all the fixed wording of the proposal document, and every new document uses it straight away. Every user manages their own signature from the <strong>Signature</strong> button.</p>
+  <div class="callout warn">Admin changes are live for everyone as soon as you save them. Agree a time with the team and note the current value before you change anything. Put it back straight after. Before L3–L6, click <strong>Download template file</strong> to keep a backup of the Letter template.</div>
+  <div class="tests">
+    <article class="test" data-id="L1"><header><span class="tid">L1</span><h4>Only Content admins see the Admin menu</h4><span class="tag">Two people</span><span class="role">Content admin + any user</span></header>
+      <ol><li>A colleague who is not a Content admin opens the Quote Builder and looks at the top right.</li><li>You (a Content admin) open the Quote Builder and click <strong>Admin</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The colleague sees <strong>Dashboard</strong> and <strong>Signature</strong> but no <strong>Admin</strong> button. You see <strong>Admin</strong>, which opens “Admin Panels” with Signatures, Standard Paragraphs, Letter template, Document library, Technical specifications, Test methods, Quote email, Required fields to quote, Settings and Work Type Labels.</p></article>
+
+    <article class="test" data-id="L2"><header><span class="tid">L2</span><h4>Add and remove a Content admin</h4><span class="tag">Two people</span><span class="role">Content admin</span></header>
+      <ol><li>Go to Admin → Standard Paragraphs and find the <strong>Content admins</strong> panel.</li><li>Pick your colleague in <strong>Add a person</strong> and click <strong>Add</strong>. Ask them to reload the app.</li><li>Click the X on their name. Ask them to reload again.</li><li>If you are the only admin left, look at the X on your own name.</li></ol>
+      <p class="expect"><strong>You should see</strong>The panel says “Only these people can add, edit, import or delete library paragraphs.” Your colleague’s name appears as a chip, and after reloading they see the <strong>Admin</strong> button. After you remove them and they reload, the button is gone. When only one admin is left, the X on that name is greyed out, so the last admin can’t be removed.</p></article>
+
+    <article class="test" data-id="L3"><header><span class="tid">L3</span><h4>Change the letter wording and house style</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Letter template. Read the line under the title.</li><li>In <strong>Cover letter</strong>, change <strong>Closing</strong> to “Please call Assurity if you have any questions.” (the company name without “Consulting”).</li><li>In <strong>House style</strong>, change <strong>Totals (orange)</strong> to 0000FF.</li><li>Click <strong>Save template</strong>. Regenerate a TEST proposal that has not been sent and open it.</li><li>Put both values back and save.</li></ol>
+      <p class="expect"><strong>You should see</strong>The line reads “Using the built-in default.” or “Last saved (date) by (name).” After saving you see “Letter template saved — new documents will use it”, and the line shows your name. In the document, the closing reads “Please call Assurity Consulting if you have any questions.” (the app never shortens the company name), and the programme totals are blue instead of orange. After you put the values back, the next document is back to normal.</p></article>
+
+    <article class="test" data-id="L4"><header><span class="tid">L4</span><h4>Logo and certification images</h4><span class="role">Content admin</span></header>
+      <ol><li>In <strong>Letterhead images</strong>, click <strong>Upload</strong> (or <strong>Replace</strong>) under <strong>Logo</strong> and pick a GIF or other non-PNG/JPG file.</li><li>Pick the approved logo PNG instead. Do the same for <strong>Certification block</strong>.</li><li>Regenerate a TEST proposal and open it.</li></ol>
+      <p class="expect"><strong>You should see</strong>The wrong file type is refused with “Use a PNG or JPG image”. The PNG shows in the preview with the message “Logo saved — new documents will use it” (or “Certification block saved — …”). In the document, the logo is at the top right of page 1 and smaller at the right of every section header. The certification block is at the bottom left of page 1 only. If the logo is ever removed with the bin icon, documents use the Logo URL field, or the built-in Assurity Consulting logo. Leave the approved images in place.</p></article>
+
+    <article class="test" data-id="L5"><header><span class="tid">L5</span><h4>Terms and conditions versions</h4><span class="role">Content admin</span></header>
+      <ol><li>Note the banner above the images, for example “T&amp;Cs v3”.</li><li>In <strong>Terms &amp; Conditions</strong>, add “ TEST – Sam” to the end of clause 1’s Text and click <strong>Save template</strong>.</li><li>Scroll to <strong>T&amp;Cs history</strong> and open the previous version.</li><li>Regenerate a TEST proposal and check the terms page.</li><li>Remove your text and save again.</li></ol>
+      <p class="expect"><strong>You should see</strong>The message “Saved — T&amp;Cs are now v4”, and the banner reads “T&amp;Cs v4” with “Last updated by (you) · (date)”. The history lists v3 with a lock and “Updated by … · (date)”. Opening it shows the old wording, read only. The document’s terms show your text, under the header built from the <strong>T&amp;Cs version label</strong> field. Saving the wording back creates v5, and every earlier version stays in the history. <strong>Add clause</strong> and the bin on each clause add and remove clauses.</p></article>
+
+    <article class="test" data-id="L6"><header><span class="tid">L6</span><h4>Template file, Assurity Consulting defaults and reset</h4><span class="role">Content admin</span></header>
+      <ol><li>Click <strong>Download template file</strong>, then <strong>Upload template file</strong> and pick that same file.</li><li>Click <strong>Import T&amp;Cs from PDF</strong> and pick a copy of the Terms and Conditions PDF. Don’t save; reload the page.</li><li>Click <strong>Load Assurity Consulting defaults</strong> and read the box, then click <strong>Overwrite and save</strong>.</li><li>Click <strong>Reset to default</strong>.</li><li>Upload your downloaded template file again to restore the agreed version.</li></ol>
+      <p class="expect"><strong>You should see</strong>A .json file such as letter-template-assurity-consulting.json downloads. Uploading it saves straight away (“Letter template saved — new documents will use it”). The PDF import says “(n) terms read from (file) — check them, then Save template” and changes nothing until you save. The defaults box, <strong>Load Assurity Consulting defaults?</strong>, explains that the style, letterhead, wording, headings and T&amp;Cs (Version 8) are reset and that uploaded images are kept. Overwrite and save saves them, and if the terms changed a new T&amp;Cs version is made. If the PDF on file can’t be read, a warning asks you to use Import T&amp;Cs from PDF. Reset shows “Reverted to the default template”, the line reads “Using the built-in default.” and Reset is greyed out. The final upload restores your version.</p></article>
+
+    <article class="test" data-id="L7"><header><span class="tid">L7</span><h4>My signature</h4><span class="role">Any user</span></header>
+      <ol><li>Click <strong>Signature</strong> (top right).</li><li>Type a <strong>Job title</strong>, click <strong>Upload</strong>, pick a PNG of your signature and click <strong>Save</strong>.</li><li>Generate a TEST proposal where you are the Assigned Consultant (or none is set) and open it.</li><li>Remove the image with the bin, click <strong>Save</strong> and regenerate.</li></ol>
+      <p class="expect"><strong>You should see</strong>A page titled <strong>My signature</strong> explaining who signs letters. It shows your name (not editable), the Job title box and the image preview (“No signature uploaded” when empty). Saving shows “Signature saved — letters you sign will use it”. The letter shows your signature image above your bold name, with your job title underneath. Without the image, the letter leaves a blank gap and the amber warning “no signature image for (you) — a blank space was left (Signature page)” appears. If Job title is empty, your monday profile title is used. Upload your image again at the end.</p></article>
+  </div>
+</section>
+
+<section id="qb-admin-content" data-section="qb-admin-content">
+  <div class="sechead"><h2>M. Admin: paragraphs, specifications, test methods and library</h2><span class="who">Content admin</span></div>
+  <p>These screens hold the reusable content that goes into proposals: standard paragraphs for the letter, a technical specification per work type, the test methods behind the WEA pages and the Planned work grid, and a library of Word and PDF documents. Only Content admins can save changes.</p>
+  <div class="callout">Test methods you add here appear in every user’s Planned work grid straight away. Use only the TEST-SAM codes below, and delete them when all of G–K are finished (last step of M7).</div>
+  <div class="tests">
+    <article class="test" data-id="M1"><header><span class="tid">M1</span><h4>Add a standard paragraph and see it used</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Standard Paragraphs and click <strong>New paragraph</strong>.</li><li>Title “TEST – Sam – Site access”, Text “Please arrange access to plant rooms before our visit.”, Scope <strong>General</strong>, Inclusion <strong>Always include</strong>. Click <strong>Save</strong>.</li><li>Use the <strong>All</strong> / <strong>Always include</strong> / <strong>Optional</strong> filter.</li><li>Start a new quote on the TEST opportunity (Part 1 wizard) and look at its paragraphs step, then cancel.</li></ol>
+      <p class="expect"><strong>You should see</strong>The message “Paragraph added”. The paragraph is listed under <strong>GENERAL</strong> with an <strong>Always include</strong> badge, and the count “(n) paragraphs” goes up by one. It shows under All and Always include but not under Optional. In the new quote it is already included. Once it is on a quote, it appears in that letter after the opening paragraph, with its title in bold.</p></article>
+
+    <article class="test" data-id="M2"><header><span class="tid">M2</span><h4>Paragraph rules: required fields, editing and deleting</h4><span class="role">Content admin</span></header>
+      <ol><li>Click <strong>New paragraph</strong>, choose Scope <strong>Work types</strong> and fill in Title and Text but no work type. Then clear the Title.</li><li>Cancel. Click the pencil on “TEST – Sam – Site access”, change the text and save.</li><li>Click its bin, read the box and click <strong>Delete</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong><strong>Save</strong> stays greyed out while there is no work type for the Work types scope, and while Title or Text is empty. Editing opens <strong>Edit paragraph</strong> and shows “Paragraph updated”. The delete box reads “Delete “TEST – Sam – Site access”?” and “It is removed from the library. Quotes that already contain it keep their copy.” After deleting, it is gone from the list. A TEST quote that already had it still shows it in the letter.</p></article>
+
+    <article class="test" data-id="M3"><header><span class="tid">M3</span><h4>Import paragraphs from Word</h4><span class="role">Content admin</span></header>
+      <ol><li>In Word, make a file with three sections. First: Heading 1 “General”, Heading 2 “TEST – Sam – Parking” and a normal paragraph. Second: Heading 1 “Fire Risk Assessment”, Heading 2 “TEST – Sam – Fire doors” and a paragraph. Third: Heading 1 “TEST nonsense”, Heading 2 “TEST – Sam – Unmatched” and a paragraph.</li><li>Click <strong>Import from Word</strong> and choose the file.</li><li>Untick the “TEST – Sam – Unmatched” row, then click <strong>Save 2 paragraphs</strong>.</li><li>Try a Word file with no Heading 1 at all.</li><li>Delete the imported TEST paragraphs.</li></ol>
+      <p class="expect"><strong>You should see</strong>The window says “Each Heading 1 must be a work type name or “General”. Heading 2 becomes the paragraph title. Everything imports as Optional.” It shows “3 of 3 paragraphs selected” and, in red, “1 need a work type”. The General row has General ticked. The fire row already has Fire Risk Assessment chosen. The unmatched row has a red border and Save is greyed out. Once you untick it, Save is active and saving shows “Imported 2 paragraphs”, both marked Optional. The file without a Heading 1 shows “No paragraphs found under a Heading 1 in this document”.</p></article>
+
+    <article class="test" data-id="M4"><header><span class="tid">M4</span><h4>Edit a technical specification</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Technical specifications and read the count line.</li><li>Choose <strong>Legionella Risk Assessment</strong>. If it says “Not saved yet”, click <strong>Start from built-in text</strong>.</li><li>Under the first section click <strong>Add section below</strong>. Type the heading “TEST – Sam – Scope note” and the text “• first point” and “• second point” on two lines. Click <strong>Sub-heading</strong>, then move it up one place.</li><li>Click <strong>Save Legionella Risk Assessment</strong>. Regenerate P1 and look at its specification.</li><li>Remove your section and save again. Make sure Fire Risk Assessment also has saved text.</li></ol>
+      <p class="expect"><strong>You should see</strong>“(n) of (total) work types have saved text.” The Save button is greyed out until you change something, and “Unsaved changes” then appears. Saving shows “Legionella Risk Assessment saved”, and the status reads “Last saved (date) by (you)”. In the document, “TEST – Sam – Scope note” is a sub-heading in the new position, followed by two bullets. After you remove it, the next document no longer has it.</p></article>
+
+    <article class="test" data-id="M5"><header><span class="tid">M5</span><h4>Pre-fill specifications from PDFs</h4><span class="role">Content admin</span></header>
+      <ol><li>Click <strong>Read the 9 specification files on file</strong> and wait.</li><li>Open a <strong>Preview</strong>, and look at the Legionella Risk Assessment row (edited in M4).</li><li>Change one row’s work type to a different work type, and look at the Save button.</li><li>Click <strong>Clear</strong>. Do not save unless your team has agreed to load these texts.</li></ol>
+      <p class="expect"><strong>You should see</strong>One row per file, each showing “(n) sections · (m) sub-headings”, with a Preview of the headings and text and a work type picked by name. Rows for specifications someone has edited show “Overwrite the edited (work type) specification” and are left out of the save unless you tick it. Rows that would replace imported text say “Replaces imported text for (work type)”. Files with no match are listed in red under “No matching work type for: …”. The Save button counts only the rows ready to save (“Save (n) specifications”). Clear empties the list. <strong>Import built-in text for the rest</strong> only fills work types that have no saved text.</p></article>
+
+    <article class="test" data-id="M6"><header><span class="tid">M6</span><h4>Import test methods</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Test methods. Paste these lines into the box (comma separated):<br>Test code,Description,Method,Accreditation,Category<br>TEST-SAM-W1,TEST Sam water sample,TM 999,UKAS,Water<br>TEST-SAM-A1,TEST Sam air sample,TM 998,Not UKAS accredited,Air<br>,Row without a code,TM 997,UKAS,Air</li><li>Read the button and the red text, then click <strong>Import 2 rows</strong>.</li><li>Change “TM 999” to “TM 999b” and import again.</li></ol>
+      <p class="expect"><strong>You should see</strong>The button reads <strong>Import 2 rows</strong>, with red text “1 row(s) without a test code will be skipped”. The first import shows “2 added, 0 updated”, and both rows appear in the table under Test code, Description, Method, Accreditation and Category. The second import shows “0 added, 2 updated”, and the Method column shows TM 999b. On a costing card’s Planned work grid (Part 1), TEST-SAM-A1 is listed under Air and TEST-SAM-W1 under Water.</p></article>
+
+    <article class="test" data-id="M7"><header><span class="tid">M7</span><h4>Test method statements, and deleting a test</h4><span class="role">Content admin</span></header>
+      <ol><li>On TEST-SAM-A1 click <strong>Add statement</strong>.</li><li>Fill in <strong>Objectives</strong> and <strong>Equipment</strong> (one line starting “• ”) and click <strong>Save</strong>.</li><li>After H8 is done, regenerate P1 v2 or another TEST WEA proposal if you need to re-check.</li><li>When all of G–K are finished, click the bin on TEST-SAM-W1 and TEST-SAM-A1.</li></ol>
+      <p class="expect"><strong>You should see</strong>A window titled “TEST Sam air sample” with “Test method statement · TEST-SAM-A1 · Not UKAS accredited.” and six boxes: Objectives, Equipment, Rationale and Method, Precautions, References and Colour-coding rules. Saving shows “TEST-SAM-A1 saved”, and the button now reads <strong>Statement</strong>. In the WEA pages, the statement appears under the heading “TEST Sam air sample *” (see H8). The bin removes a row immediately, without asking first.</p></article>
+
+    <article class="test" data-id="M8"><header><span class="tid">M8</span><h4>Document library: add, new version, history and remove</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Document library and click <strong>Add document</strong>. Click <strong>Save</strong> with nothing filled in. Type any name and click Save again. Then pick an .xlsx file.</li><li>Pick a Word file. Name it “TEST – Sam – Framework terms”, set Type <strong>Terms and conditions</strong>, search “TEST – Sam” under <strong>Companies (optional)</strong>, pick your TEST company and click <strong>Save</strong>.</li><li>Add “TEST – Sam – Other company terms” (Word, Terms and conditions, a different TEST company) and “TEST – Sam – Site plan” (a PDF, Type <strong>Other</strong>, no company).</li><li>Click the pencil on Framework terms, choose a new Word file and save. Then click its history icon.</li><li>When all of G–K are finished, click the bin on each TEST document and confirm.</li></ol>
+      <p class="expect"><strong>You should see</strong>These errors, in turn: “Give the document a name.”, “Choose a file to upload.” and “Choose a Word (.docx) or PDF file.”. The Name fills in from the file name when it is empty. Saving shows “TEST – Sam – Framework terms added”. The list line reads “Terms and conditions · (your company) · v1 · (file name)”; the Site plan shows “Any company”. The new file shows “TEST – Sam – Framework terms updated to v2”, and the history shows v2 (marked “current”) and v1, each with file name, size, date and uploader. The remove box says “It won't be offered for new proposals. Proposals already generated with it are not affected.” and then “(name) removed”.</p></article>
+  </div>
+</section>
+
+<section id="qb-admin-settings" data-section="qb-admin-settings">
+  <div class="sechead"><h2>N. Admin: quote email, required fields and settings</h2><span class="who">Content admin</span></div>
+  <p>These screens control the email that carries the approval link, which opportunity fields must be filled before a quote can be created, Quote numbering, the quote validity period and the costing defaults.</p>
+  <div class="tests">
+    <article class="test" data-id="N1"><header><span class="tid">N1</span><h4>Quote email template</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Quote email and read the line next to <strong>Quote email template</strong>.</li><li>Add “ (TEST)” to the Subject. In Body, put the cursor after “Dear ” and click <strong>+ Contact first name</strong>; look at what is inserted.</li><li>Click <strong>Save</strong>. Open <strong>Send</strong> on a Reviewed TEST proposal and look at the Subject and Message, then close it.</li><li>Click <strong>Restore default</strong>, then <strong>Save</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The line reads “Using the default — replace with the client’s wording when supplied” or “Updated (date) by (name)”. The buttons insert {{contactFirstName}}, {{quoteNo}}, {{total}}, {{consultantName}} and {{approvalLink}} at the cursor. Save shows “Quote email saved”. The send window is pre-filled with your new subject and body, with the merge fields filled in. Restore default puts the original wording back in the boxes; it is only stored once you click Save.</p></article>
+
+    <article class="test" data-id="N2"><header><span class="tid">N2</span><h4>Approval portal URL</h4><span class="role">Content admin</span></header>
+      <ol><li>Note the current <strong>Approval portal URL</strong>.</li><li>Change it to “http://example.com” and click <strong>Save</strong>.</li><li>Click <strong>Use this app's client page</strong>, look at the example box and click <strong>Save</strong>. If the original URL was different, put it back.</li></ol>
+      <p class="expect"><strong>You should see</strong>The http address is refused with “The approval portal URL must start with https://”. The button fills in the app’s own address ending “/portal”. A box “Example link the client will receive” shows that address followed by “?t=&lt;token&gt;&amp;hideWatermark=true”. Saving shows “Quote email saved”. If this URL were ever empty, Send would be blocked with “Set the Approval portal URL in Admin → Quote email before sending.”</p></article>
+
+    <article class="test" data-id="N3"><header><span class="tid">N3</span><h4>Test email and mailbox status</h4><span class="role">Content admin</span></header>
+      <ol><li>Type “quotes@” in <strong>Shared mailbox address (for reference)</strong> and click <strong>Save</strong>. Then put the correct address back and save.</li><li>Under <strong>Send a test email to</strong>, choose <strong>Gmail</strong>, type your own email and click <strong>Test</strong>.</li><li>Repeat with <strong>Outlook</strong>.</li><li>Open the test emails.</li></ol>
+      <p class="expect"><strong>You should see</strong>“Enter a valid mailbox address” for the incomplete address. <strong>Test</strong> is greyed out until the address has an @. A successful test shows “Test email sent to (you)” and the status line “Connected — last test succeeded (date and time)”. A failed test shows the reason (for example “Outlook could not send: …”) both as a message and in the status line. The email’s subject is “[TEST] Your quotation from Assurity Consulting — Quote No 12345”, the body says “Dear Sam,” with total £4,250.00 and “Test Consultant”, and it has the <strong>View and approve your quote</strong> button.</p></article>
+
+    <article class="test" data-id="N4"><header><span class="tid">N4</span><h4>Required fields to quote</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Required fields to quote and note what is ticked.</li><li>Tick <strong>Project details</strong> and click <strong>Save</strong>.</li><li>Open a TEST opportunity with an empty Project details and look at <strong>Create quote</strong>.</li><li>Type project details in the box that appears and save it.</li><li>Untick Project details and save.</li></ol>
+      <p class="expect"><strong>You should see</strong>12 fields: Source, Account, Contact, Owner, Expected close date, Deal value, Opportunity type, Forecast category, CS Manager, Team, Customer order ref and Project details. If the setting has never been saved, Source, Account, Contact and Owner are ticked. Saving shows “Required fields saved”. On the opportunity, <strong>Create quote</strong> is greyed out, with a red box “Add Project details before creating a quote” and an input under it. Once you fill it in, Create quote becomes active, and the value is saved to Project details on the Opportunities board.</p></article>
+
+    <article class="test" data-id="N5"><header><span class="tid">N5</span><h4>Quote numbering and quote validity</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Settings. Note the <strong>Starting quote number</strong> and <strong>Next Quote No</strong>.</li><li>Enter 0 and click <strong>Save</strong>, then put the original number back and save. Never enter a number higher than the next Quote No without the team’s agreement.</li><li>In <strong>Quote validity</strong>, enter 400 and click <strong>Save</strong>. Then enter 30 (or the current value) and save.</li><li>Open a TEST opportunity whose Close By Date is empty.</li></ol>
+      <p class="expect"><strong>You should see</strong>Next Quote No is the higher of the starting number and the highest Quote No on the board, plus 1, skipping any number already used. With 0 it shows the highest Quote No on the board plus 1, and the message “Starting quote number saved”. 400 is refused with “Enter a number of days between 1 and 365”. 30 shows “Quote validity period saved”. On the opportunity, Close By Date is pre-filled with today plus 30 days (10 November → 10 December), with “Pre-filled from the quote validity period — save to keep it.”</p></article>
+
+    <article class="test" data-id="N6"><header><span class="tid">N6</span><h4>Default hourly rates and fire tier hours</h4><span class="role">Content admin</span></header>
+      <ol><li>In Settings, note the <strong>Consultant hourly rate (£)</strong> and <strong>Support hourly rate (£)</strong>. Change the consultant rate by £1 and click <strong>Save rates</strong>.</li><li>In <strong>Fire tier default hours (per visit)</strong>, note the Small / Site work value. Change it to 3 and click <strong>Save fire tiers</strong>.</li><li>Open a new TEST costing card (Part 1). Check the rate and pick the Small tier on a fire costing card.</li><li>Put both values back and save.</li></ol>
+      <p class="expect"><strong>You should see</strong>“Hourly rates saved” and “Fire tier defaults saved”. A costing card with an empty rate is pre-filled with the new rate, and picking Small fills Site work with 3 hours for each visit. After you restore the values, new cards use the original figures.</p></article>
+
+    <article class="test" data-id="N7"><header><span class="tid">N7</span><h4>Work Type Labels page</h4><span class="role">Content admin</span></header>
+      <ol><li>Open Admin → Work Type Labels.</li><li>In <strong>Work type costing</strong>, choose Fire Risk Assessment. Note <strong>Standard support hours (per visit)</strong>, click <strong>Add reference price</strong>, type “TEST – Sam” and “£100”, and click <strong>Save Fire Risk Assessment</strong>.</li><li>Open a Fire Risk Assessment costing card (Part 1), then remove the reference price and save.</li><li>Click <strong>Add All Work Type Labels</strong>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The page is headed “Work Type Label Setup” (Board: Quotes &amp; Invoices) and has a <strong>Manage Standard Paragraphs →</strong> link. Saving shows “Fire Risk Assessment saved”, and the costing card shows the standard support hours (read-only) and the “TEST – Sam £100” reference price until you remove it. The labels button shows “All Work Type labels already exist — nothing to add.” with Existing / Added: 0 / Total. If any labels were missing, they are added and listed.</p></article>
+  </div>
+</section>
+
+<section id="qb-help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>Why is “Create quote” greyed out?</dt><dd>A field your admin has made required is empty on the opportunity. The red box under the button says which one (“Add … before creating a quote”). Fill it in there and it is saved to the opportunity. Admins choose these fields in Admin → Required fields to quote.</dd>
+    <dt>Why can’t I edit or regenerate my proposal?</dt><dd>It has been sent or approved, so it is locked (“This proposal has been sent. Use Revise to make changes.”). Click <strong>Revise</strong> and give a reason. This creates a new version (v2, v3 …) that you can edit, and the old version moves to History as read only.</dd>
+    <dt>What does “Superseded” mean?</dt><dd>An older version that has been replaced by a revision. It can’t be changed, its values are not counted in totals, and its approval link no longer works.</dd>
+    <dt>Why is Send greyed out?</dt><dd>The proposal must be generated and then reviewed. Either tick <strong>Reviewed — no edits needed</strong> or click <strong>Upload edited file</strong>. The text next to Send tells you which step is missing.</dd>
+    <dt>I changed a price after reviewing. Why is it back to Generated?</dt><dd>On purpose: any change to a line, and any regeneration, means the document must be checked again. Regenerate, review and then send.</dd>
+    <dt>Where is the Word file saved?</dt><dd>In the <strong>Quote Proposal Document</strong> column of every line of the proposal on the Quotes &amp; Invoices board. Drafts are named Q(Quote No)-v(version)-draft.docx, edited uploads -edited.docx and the sent PDF -sent.pdf. The card’s “Current document” link opens the latest one.</dd>
+    <dt>Who signs the letter, and why is there a blank space instead of a signature?</dt><dd>The Assigned Consultant on the lines (copied from the opportunity Owner when the quote was created) signs the letter, or you if none is set. If that person hasn’t uploaded a signature image on the <strong>Signature</strong> page, the letter leaves a blank space for a handwritten signature.</dd>
+    <dt>Why does the Ref only show the Quote No?</dt><dd>The full Ref (consultant initials/your initials/Quote No) needs a real Assigned Consultant. Set one on the lines and regenerate.</dd>
+    <dt>The message says “no technical specification set for …”. What do I do?</dt><dd>That work type has no saved specification, so none is included. Ask a Content admin to add it in Admin → Technical specifications, then regenerate.</dd>
+    <dt>Why does the letter say “Dear Sir/Madam”?</dt><dd>The contact has no First Name and no name on the People board. Fill in First Name and regenerate.</dd>
+    <dt>Why can’t I choose how a site is invoiced?</dt><dd>Sites with only one-off work are always invoiced after each visit. Repeat work can be invoiced after each visit, monthly, quarterly, six-monthly or annually. After changing it, regenerate the document so the wording updates.</dd>
+    <dt>The send window says the PDF is over 5 MB.</dt><dd>The PDF can’t be emailed. Remove large added library PDFs, or upload a smaller edited Word file (for example with compressed pictures), then try again.</dd>
+    <dt>The email failed. Was anything sent?</dt><dd>No. When the mailbox fails, the window shows <strong>Not sent</strong> with the reason. The approval link is cleared and the status is unchanged. Click <strong>Try again</strong>, or try the other mailbox (Gmail or Outlook). If it keeps failing, ask a Content admin to send a test from Admin → Quote email.</dd>
+    <dt>The client says the link has expired.</dt><dd>A newer version of the proposal exists (Revise), or the link was replaced. Send the latest version; its email carries a new link.</dd>
+    <dt>Can I send several proposals in one email?</dt><dd>Yes, if they are all Reviewed and for the same contact. Tick the boxes in front of the Quote Nos and click <strong>Send (n) together</strong>. Each proposal gets its own button. You can’t edit the subject or message in that window.</dd>
+    <dt>What does “Remember for (company)” do?</dt><dd>It saves your choices in the “What goes into this document” window (parts left out, library replacements and added documents) for that company. The next proposal for the company opens with them already set.</dd>
+    <dt>Who can see the Admin menu?</dt><dd>Only Content admins. They are listed, added and removed on Admin → Standard Paragraphs. Everyone can manage their own signature with the <strong>Signature</strong> button.</dd>
+    <dt>How is the Quote No chosen?</dt><dd>It is the higher of the starting number in Admin → Settings and the highest Quote No on the board, plus 1. Numbers already used are skipped.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-qb-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity Consulting monday.com UAT results – Quote Builder',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
