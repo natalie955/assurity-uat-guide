@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Approval Portal UAT Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./">End-to-end UAT</a><a href="uat-quote-builder.html">Quote Builder</a><a href="uat-approval-portal.html" aria-current="page">Approval Portal</a><a href="uat-order-processor.html">Order Processor</a><a href="uat-workload-planner.html">Workload Planner</a><a href="uat-sample-planner.html">Sample Planner</a><a href="uat-renewal-hub.html">Renewal Hub</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#ap-start">Before you start</a></li>
+    <li><a href="#ap-review">A. Opening and reviewing the quote <span class="count" data-count="ap-review"></span></a></li>
+    <li><a href="#ap-approve">B. Approving online <span class="count" data-count="ap-approve"></span></a></li>
+    <li><a href="#ap-po">C. Approving with a purchase order <span class="count" data-count="ap-po"></span></a></li>
+    <li><a href="#ap-manual">D. Manual Approval companies <span class="count" data-count="ap-manual"></span></a></li>
+    <li><a href="#ap-decline">E. Declining a quote <span class="count" data-count="ap-decline"></span></a></li>
+    <li><a href="#ap-links">F. Versions and deals with several proposals <span class="count" data-count="ap-links"></span></a></li>
+    <li><a href="#ap-help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · Quote Approval Portal</p>
+  <h1>Quote Approval Portal: in-depth test script</h1>
+  <p class="lead">What your clients see when they open a proposal link: reviewing the quote, approving online, approving with a purchase order or a signed page, declining, and what each response changes in monday.com.</p>
+  <p class="byline">Prepared by Mutherboard · November 2026 · Version 1 · 31 tests · About 1½ hours · For: Sales and the Quotes & Orders team, acting as the client</p>
+</header>
+
+<section id="ap-start">
+  <h2>Before you start</h2>
+  <p>The Quote Approval Portal is the page your client opens from the link in a proposal email. They do not need a monday.com login. From the page they can read the quote, download the PDF, approve it (with their invoicing details and, optionally, a purchase order) or decline it. Their answer is written straight onto the quote lines and the opportunity.</p>
+  <p>In these tests <b>you play the client</b>. Every link must come from a proposal you sent to <b>your own email address</b>.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>A monday.com login with access to the Quote Builder, Opportunities, Companies and Quotes &amp; Invoices.</li>
+    <li>Access to your own inbox, plus a phone to check the page on a small screen.</li>
+    <li>A small PDF to use as a purchase order, and a second PDF or photo to use as a signed signature page.</li>
+  </ul>
+  <h3>Test data</h3>
+  <ul>
+    <li>A <b>TEST – yourname</b> company with <b>Signing Preference</b> set to <b>Electronic Approval</b>, and a contact on it whose email is your own.</li>
+    <li>A TEST opportunity for that company with at least one site.</li>
+    <li>Several small proposals built and sent from the Quote Builder (see the Quote Builder script). Each approval or decline uses up its link, so you will need about six. Use a one-line, one-site proposal for most tests and a two-site proposal (one repeat line, one one-off line) for A2.</li>
+  </ul>
+  <div class="callout warn">Never forward a portal link to a real client during testing, and never approve a real client’s quote.</div>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only, separately for each app’s script. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date check that runs each morning. Set things up as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="ap-review" data-section="ap-review">
+  <div class="sechead"><h2>A. Opening and reviewing the quote</h2><span class="who">You, as the client</span></div>
+  <p>The link in the proposal email opens a page for that proposal only. It shows the quote number, the company and contact, the sites, the first-year and contract totals, and a button to download the PDF that was sent.</p>
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>The email link opens the quote</h4><span class="role">Client</span></header>
+      <ol><li>Send a one-line proposal to yourself from the Quote Builder.</li><li>Open the email and click the approval link.</li></ol>
+      <p class="expect"><strong>You should see</strong>A page headed <b>Quotation</b> with <b>Q</b> and the quote number, the line “Review and approve your Assurity quote.”, your TEST company name, “For the attention of” your contact name, and the site name in a small tag.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>Totals match the proposal</h4><span class="role">Client</span></header>
+      <ol><li>Open the link for your two-site proposal (a repeat line and a one-off line).</li><li>Compare <b>First year</b> and <b>Contract total</b> with the totals in the Quote Builder.</li></ol>
+      <p class="expect"><strong>You should see</strong>Both sites are listed. First year = one-off lines in full plus one year of each repeat line; Contract total = one-off lines plus each repeat line × its contract years. Example: £250 per visit quarterly for 2 years (£1,000 a year, £2,000 contract) plus a £600 one-off gives First year £1,600 and Contract total £2,600.</p></article>
+
+    <article class="test" data-id="A3"><header><span class="tid">A3</span><h4>Download the PDF</h4><span class="role">Client</span></header>
+      <ol><li>Click <b>Download PDF</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The proposal PDF that was sent downloads (its file name ends in <i>-sent.pdf</i>) and matches the document in the Quote Builder.</p></article>
+
+    <article class="test" data-id="A4"><header><span class="tid">A4</span><h4>Read the Terms &amp; Conditions</h4><span class="role">Client</span></header>
+      <ol><li>On the <b>Approve</b> tab, click <b>Read the Terms &amp; Conditions</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The proposal PDF opens in a new browser tab, so the client can read the terms section. If your browser blocks pop-ups, allow them for this page and try again.</p></article>
+
+    <article class="test" data-id="A5"><header><span class="tid">A5</span><h4>Works on a phone</h4><span class="role">Client</span></header>
+      <ol><li>Open the same link on your phone.</li><li>Switch between <b>Approve</b> and <b>Decline</b> and open both optional sections on the Approve tab.</li></ol>
+      <p class="expect"><strong>You should see</strong>Everything fits the screen without sideways scrolling, the buttons are easy to tap and every field can be filled in.</p></article>
+
+    <article class="test" data-id="A6"><header><span class="tid">A6</span><h4>A broken link is refused</h4><span class="role">Client</span></header>
+      <ol><li>Copy the link, change or delete a few characters at the end, and open it.</li><li>Open the portal address with nothing after it.</li></ol>
+      <p class="expect"><strong>You should see</strong>Both show “This link is no longer valid” and no quote details.</p></article>
+  </div>
+</section>
+
+<section id="ap-approve" data-section="ap-approve">
+  <div class="sechead"><h2>B. Approving online</h2><span class="who">You as the client, then you as Sales</span></div>
+  <p>For companies whose Signing Preference is <b>Electronic Approval</b>, the client types their name and position, gives invoicing details and ticks the terms box. Approving marks every line on the proposal as <b>Approved</b>, records the order details on the opportunity and tells the opportunity owner.</p>
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>The app says what is missing</h4><span class="role">Client</span></header>
+      <ol><li>On a fresh link, open the <b>Approve</b> tab and click <b>Approve quote</b> without filling anything in. (If your browser highlights an empty field first, fill in only Full name and Position and click again.)</li></ol>
+      <p class="expect"><strong>You should see</strong>A red message beginning “Please complete:” that lists what is still missing, such as the invoice address, a valid invoicing email and ticking the Terms &amp; Conditions box. Nothing is approved.</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Invoice details are checked</h4><span class="role">Client</span></header>
+      <ol><li>Fill in Full name and Position and tick the terms box.</li><li>Enter an invoice address of only 3 characters and an invoicing email without an @ sign, then click <b>Approve quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The “Please complete:” message lists the invoice address and a valid invoicing email. Correct both and the message clears on the next attempt.</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>PO expiry date limits</h4><span class="role">Client</span></header>
+      <ol><li>Open <b>Add a purchase order (optional)</b>.</li><li>Try to set <b>PO expiry</b> to today, then to a date more than 10 years away.</li></ol>
+      <p class="expect"><strong>You should see</strong>The date picker only allows dates from tomorrow up to 10 years ahead. If an earlier or later date is typed in, the page says “Please complete: a PO expiry date after today and within 10 years.”</p></article>
+
+    <article class="test" data-id="B4"><header><span class="tid">B4</span><h4>Approve without a purchase order</h4><span class="role">Client</span></header>
+      <ol><li>Fill in Full name, Position, Invoice address and Invoicing email, and tick <b>I accept the quote and the Terms &amp; Conditions</b>.</li><li>Leave the optional sections closed and click <b>Approve quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>A “Thank you” page: “Your approval has been received. Our team will be in touch to arrange the next steps.”</p></article>
+
+    <article class="test" data-id="B5"><header><span class="tid">B5</span><h4>Quote lines are marked Approved</h4><span class="role">Sales</span></header>
+      <ol><li>Open the <b>Quotes &amp; Invoices</b> board and find the lines of the proposal you approved in B4.</li></ol>
+      <p class="expect"><strong>You should see</strong>Every line has <b>Status</b> Approved, <b>Order Confirmation Type</b> Customer Email and <b>Order Date</b> today. The approval link on the line has been cleared.</p></article>
+
+    <article class="test" data-id="B6"><header><span class="tid">B6</span><h4>The opportunity records the order</h4><span class="role">Sales</span></header>
+      <ol><li>Open the TEST opportunity on the <b>Opportunities</b> board.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Order Date</b> today, <b>Confirmation Type</b> Customer Email, and the <b>Invoice Address</b> and <b>Invoicing Email</b> you typed in the portal. If this was the only open proposal on the deal, <b>Deal Stage</b> is Won and <b>Closed Date</b> is today.</p></article>
+
+    <article class="test" data-id="B7"><header><span class="tid">B7</span><h4>Update and notification</h4><span class="role">Sales</span></header>
+      <ol><li>Open the opportunity’s Updates.</li><li>Check the notifications (bell) of the opportunity owner.</li></ol>
+      <p class="expect"><strong>You should see</strong>One update: “Quote Q… — APPROVED online by [name] ([position]) on [date and time]. Accepted the quote and the Terms &amp; Conditions.” The owner gets a notification “Quote Q… was approved by the client.” with a link to the deal.</p></article>
+
+    <article class="test" data-id="B8"><header><span class="tid">B8</span><h4>The link can only be used once</h4><span class="role">Client</span></header>
+      <ol><li>Open the same approval link again, or refresh the page.</li></ol>
+      <p class="expect"><strong>You should see</strong>“This link is no longer valid”. The client cannot approve or decline twice.</p></article>
+  </div>
+</section>
+
+<section id="ap-po" data-section="ap-po">
+  <div class="sechead"><h2>C. Approving with a purchase order</h2><span class="who">You as the client, then you as Sales</span></div>
+  <p>The client can add a PO number, a PO expiry date and the PO document. The PO is saved on the quote lines and on the opportunity, and the confirmation type becomes <b>Purchase Order Document</b>.</p>
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>Approve with a full purchase order</h4><span class="role">Client</span></header>
+      <ol><li>On a fresh link, fill in the approval details.</li><li>Open <b>Add a purchase order (optional)</b>, enter a PO number (e.g. TEST-PO-001), a PO expiry about a year ahead, and attach your PO PDF.</li><li>Click <b>Approve quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The Thank you page.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>PO details on the quote lines</h4><span class="role">Sales</span></header>
+      <ol><li>Open the proposal’s lines on <b>Quotes &amp; Invoices</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Status</b> Approved, <b>Order Confirmation Type</b> Purchase Order Document, <b>Customer Order Reference</b> TEST-PO-001, <b>PO Expiry</b> the date you chose (dd/mm/yyyy), and a file named <b>Q[quote no]-PO</b> in <b>Quote Proposal Document</b>.</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>PO details on the opportunity</h4><span class="role">Sales</span></header>
+      <ol><li>Open the TEST opportunity.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Confirmation Type</b> Purchase Order Document, <b>Customer Order Ref</b> TEST-PO-001, the PO expiry date, and the PO file in <b>PO Document</b>. The update ends with “PO: TEST-PO-001, expiry [date]. PO attached.”</p></article>
+
+    <article class="test" data-id="C4"><header><span class="tid">C4</span><h4>PO number without a document</h4><span class="role">Client</span></header>
+      <ol><li>On a fresh link, approve with a PO number only (no expiry, no file).</li><li>Check the lines and the opportunity.</li></ol>
+      <p class="expect"><strong>You should see</strong>The PO number is saved as the Customer Order Reference / Customer Order Ref, and the confirmation type is <b>Customer Email</b> because no PO document was attached.</p></article>
+
+    <article class="test" data-id="C5"><header><span class="tid">C5</span><h4>Optional signed contract with online approval</h4><span class="role">Client</span></header>
+      <ol><li>On a fresh link, fill in the approval details and open <b>Signing with wet ink? Upload your signed contract (optional)</b>.</li><li>Attach a PDF and approve.</li></ol>
+      <p class="expect"><strong>You should see</strong>The approval goes through. The lines carry a file named <b>Q[quote no]-signed</b>, and the opportunity update says “Signed copy uploaded.”</p></article>
+  </div>
+</section>
+
+<section id="ap-manual" data-section="ap-manual">
+  <div class="sechead"><h2>D. Manual Approval companies</h2><span class="who">You as Sales, then as the client</span></div>
+  <p>When a company’s <b>Signing Preference</b> is <b>Manual Approval</b>, the client must upload a signed signature page instead of typing their name. The proposal document then includes a signature page for them to print and sign.</p>
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>Switch the company to Manual Approval</h4><span class="role">Sales</span></header>
+      <ol><li>On the <b>Companies</b> board, set your TEST company’s <b>Signing Preference</b> to <b>Manual Approval</b>.</li><li>In the Quote Builder, generate and send a new proposal for that company.</li></ol>
+      <p class="expect"><strong>You should see</strong>The proposal PDF ends with a <b>Signature page</b>.</p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>The page asks for a signed page</h4><span class="role">Client</span></header>
+      <ol><li>Open the new link and look at the <b>Approve</b> tab.</li></ol>
+      <p class="expect"><strong>You should see</strong>“This quote requires manual approval. Please upload your signed signature page before approving.” and a required upload field. There is no Full name, Position or terms tick box, and <b>Approve quote</b> is greyed out until a file is chosen.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Approve with a signed page</h4><span class="role">Client</span></header>
+      <ol><li>Attach your signed page, fill in the invoice address and invoicing email, and click <b>Approve quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The Thank you page.</p></article>
+
+    <article class="test" data-id="D4"><header><span class="tid">D4</span><h4>Signed page saved and recorded</h4><span class="role">Sales</span></header>
+      <ol><li>Check the proposal’s lines on <b>Quotes &amp; Invoices</b> and the opportunity’s Updates.</li><li>Afterwards, set the company’s Signing Preference back to <b>Electronic Approval</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>The lines are Approved and carry a file named <b>Q[quote no]-signed</b>. The update reads “Quote Q… — APPROVED online via signed signature page on [date]. Signed signature page uploaded.”</p></article>
+  </div>
+</section>
+
+<section id="ap-decline" data-section="ap-decline">
+  <div class="sechead"><h2>E. Declining a quote</h2><span class="who">You as the client, then you as Sales</span></div>
+  <p>The client can decline with a reason. The lines become <b>Declined</b>, the reason is recorded on the opportunity and the owner is told.</p>
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>A reason is required</h4><span class="role">Client</span></header>
+      <ol><li>On a fresh link, open the <b>Decline</b> tab.</li><li>Type one or two characters in <b>Reason for declining</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Decline quote</b> stays greyed out until the reason has at least 3 characters.</p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Decline the quote</h4><span class="role">Client</span></header>
+      <ol><li>Enter a reason, e.g. “TEST – budget not approved”, and click <b>Decline quote</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>A Thank you page: “Your response has been received. We appreciate you letting us know.”</p></article>
+
+    <article class="test" data-id="E3"><header><span class="tid">E3</span><h4>Lines, note and notification</h4><span class="role">Sales</span></header>
+      <ol><li>Check the proposal’s lines, then open the opportunity: its Updates, its <b>General Note</b> and the owner’s notifications.</li></ol>
+      <p class="expect"><strong>You should see</strong>The lines have Status <b>Declined</b>. The opportunity has one update “Quote Q… — DECLINED online by the client on [date]. Reason: TEST – budget not approved”, the same sentence is added to the end of General Note (earlier notes are kept), and the owner is notified that the quote was declined. Deal Stage is not changed.</p></article>
+
+    <article class="test" data-id="E4"><header><span class="tid">E4</span><h4>Declined link can’t be reused</h4><span class="role">Client</span></header>
+      <ol><li>Open the declined link again.</li></ol>
+      <p class="expect"><strong>You should see</strong>“This link is no longer valid”.</p></article>
+  </div>
+</section>
+
+<section id="ap-links" data-section="ap-links">
+  <div class="sechead"><h2>F. Versions and deals with several proposals</h2><span class="who">Sales</span></div>
+  <p>A link only works while its lines are still open. Revising a proposal replaces the old lines, so the old link stops working. A deal only becomes Won when none of its quote lines are still open.</p>
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>An old version’s link stops working</h4><span class="role">Sales</span></header>
+      <ol><li>Send a proposal to yourself and keep the email.</li><li>In the Quote Builder, revise that proposal (new version) and send it again.</li><li>Open the link in the first email, then the link in the second.</li></ol>
+      <p class="expect"><strong>You should see</strong>The first link shows “This link is no longer valid”. The second opens the new version with its updated totals.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>Deal stays open while another proposal is pending</h4><span class="role">Sales</span><span class="tag">Two proposals</span></header>
+      <ol><li>On one TEST opportunity, send two separate proposals (two quote numbers).</li><li>Approve the first in the portal and check the opportunity.</li><li>Approve the second and check again.</li></ol>
+      <p class="expect"><strong>You should see</strong>After the first approval, Deal Stage is unchanged but the order details are recorded. After the second approval, Deal Stage becomes <b>Won</b> with today’s Closed Date.</p></article>
+
+    <article class="test" data-id="F4"><header><span class="tid">F4</span><h4>Declining the last open proposal</h4><span class="role">Sales</span><span class="tag">Two proposals</span></header>
+      <ol><li>Repeat F2 on another TEST opportunity, but <b>decline</b> the second proposal instead of approving it.</li></ol>
+      <p class="expect"><strong>You should see</strong>The deal is not moved to Won automatically, because a decline never changes the Deal Stage. Record what you see: we need to agree whether the deal should become Won in this case.</p></article>
+
+    <article class="test" data-id="F3"><header><span class="tid">F3</span><h4>Approval works without a monday.com login</h4><span class="role">Client</span></header>
+      <ol><li>Open a fresh link in a private (incognito) browser window where you are not signed in to monday.com.</li></ol>
+      <p class="expect"><strong>You should see</strong>The quote page opens and can be approved or declined without signing in.</p></article>
+  </div>
+</section>
+
+<section id="ap-help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>The client says the link “is no longer valid”.</dt>
+    <dd>The proposal has already been approved or declined, or it was replaced by a newer version. Check the lines’ Status on Quotes &amp; Invoices. If the client needs to respond again, send the current version from the Quote Builder.</dd>
+    <dt>The page says the quote document isn’t available yet.</dt>
+    <dd>The proposal was not sent as a PDF from the Quote Builder. The client can only decline until a PDF is sent. Send the proposal again from the Quote Builder.</dd>
+    <dt>The deal didn’t move to Won after the client approved.</dt>
+    <dd>Another quote line on the same opportunity is still open. The deal becomes Won when the client approves the last open proposal. If the last one is declined instead, set Deal Stage to Won by hand.</dd>
+    <dt>The update mentions a warning that follow-up steps failed.</dt>
+    <dd>The approval itself is saved, but something like a file upload did not complete. The warning lists what failed and repeats the client’s invoice details so you can finish it by hand.</dd>
+    <dt>A client approved by phone or post.</dt>
+    <dd>Use <b>Record approval</b> in the Quote Builder instead of the portal.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-ap-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity Consulting monday.com UAT results – Quote Approval Portal',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
