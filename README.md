@@ -14,3 +14,12 @@ The user acceptance testing guide for Assurity Consulting's new monday.com CRM, 
 4. When you finish, go to **Send your results**, click **Copy my results** and paste them into an email to the Mutherboard project team.
 
 Your marks are saved in your own browser only. Use the same computer and browser until you send your results.
+
+**In-depth test scripts per app:**
+
+- **Quote Builder:** https://natalie955.github.io/assurity-uat-guide/uat-quote-builder.html
+- **Approval Portal:** https://natalie955.github.io/assurity-uat-guide/uat-approval-portal.html
+- **Order Processor:** https://natalie955.github.io/assurity-uat-guide/uat-order-processor.html
+- **Workload Planner:** https://natalie955.github.io/assurity-uat-guide/uat-workload-planner.html
+- **Sample Planner:** https://natalie955.github.io/assurity-uat-guide/uat-sample-planner.html
+- **Renewal Hub:** https://natalie955.github.io/assurity-uat-guide/uat-renewal-hub.html
