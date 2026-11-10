@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Order Processor UAT Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: sticky contents rail on the left, one reading column; each board is a section with an explainer then its tests. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17201f; --muted:#56635f; --line:#d9e1de;
+  --accent:#0d6b63; --accent-soft:#e2f1ee; --water:#2f6f9f; --water-soft:#e5eef6;
+  --pass:#1c7c43; --pass-soft:#e3f3e8; --fail:#b3261e; --fail-soft:#fbe7e5; --block:#a35d00; --block-soft:#fbefdc;
+  --display:"Libre Franklin", "Segoe UI", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211f; --ink:#e6eeeb; --muted:#9db0aa; --line:#2c3a37;
+  --accent:#4fc1b4; --accent-soft:#16312d; --water:#7fb4e0; --water-soft:#172735;
+  --pass:#5cc787; --pass-soft:#14301f; --fail:#f08a80; --fail-soft:#3a1916; --block:#e8a74a; --block-soft:#36260e; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16.5px;line-height:1.6;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px))}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;line-height:1.25;margin:0}
+h1{font-size:2.1rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.55rem;font-weight:700}
+h3{font-size:1.15rem;font-weight:600;margin-top:1.6rem}
+h4{font-size:1.02rem;font-weight:600}
+p{margin:.6rem 0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:250px minmax(0,1fr);gap:40px;padding-block:32px 80px}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top, 0px) + 16px);align-self:start;max-height:calc(100vh - 32px);overflow:auto;font-size:.92rem}
+nav.toc .label{font-family:var(--display);font-size:.72rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);margin:0 0 .5rem}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:6px;text-decoration:none;color:var(--ink)}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc .count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.overall{margin:1rem 0 1.2rem;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:6px;display:flex}
+.bar span{display:block;height:100%}
+.bar .p{background:var(--pass)} .bar .f{background:var(--fail)} .bar .b{background:var(--block)}
+main{min-width:0}
+.eyebrow{font-family:var(--display);font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:600}
+.lead{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.byline{font-size:.9rem;color:var(--muted);margin-top:.8rem}
+section{padding-top:2.6rem;margin-top:2.6rem;border-top:1px solid var(--line)}
+section > p, section > ul, section > ol{max-width:68ch}
+.sechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.kind{font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.kind.app{background:var(--water-soft);color:var(--water);border-color:transparent}
+.kind.board{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.who{font-size:.85rem;color:var(--muted)}
+.callout{border-left:3px solid var(--water);background:var(--water-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:1rem 0;max-width:68ch}
+.callout.warn{border-left-color:var(--block);background:var(--block-soft)}
+.tablewrap{overflow-x:auto;margin:1rem 0;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.94rem}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.82rem;color:var(--muted);background:var(--bg)}
+tr:last-child td{border-bottom:none}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:.85rem;white-space:nowrap}
+code,.col{font-family:var(--mono);font-size:.82em;background:var(--accent-soft);padding:1px 5px;border-radius:4px;white-space:nowrap}
+.flow{list-style:none;padding:0;margin:1.2rem 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;counter-reset:f}
+.flow li{counter-increment:f;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 46px;position:relative;font-size:.93rem}
+.flow li::before{content:counter(f);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-family:var(--display);font-weight:700;font-size:.8rem;display:grid;place-items:center}
+.flow b{display:block;font-family:var(--display);font-weight:600}
+.flow .where{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+.stages{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:1rem 0;font-size:.88rem}
+.stages span{padding:3px 10px;border-radius:99px;background:var(--surface);border:1px solid var(--line)}
+.stages i{color:var(--muted);font-style:normal}
+.tests{display:grid;gap:14px;margin-top:1.2rem}
+.test{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;border-left:4px solid var(--line)}
+.test[data-status="pass"]{border-left-color:var(--pass)}
+.test[data-status="fail"]{border-left-color:var(--fail)}
+.test[data-status="blocked"]{border-left-color:var(--block)}
+.test header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.tid{font-family:var(--mono);font-size:.8rem;color:var(--accent);font-weight:500}
+.test .role{margin-left:auto;font-size:.8rem;color:var(--muted)}
+.test .tag{font-size:.72rem;font-family:var(--mono);color:var(--block);background:var(--block-soft);padding:1px 7px;border-radius:99px}
+.test ol{margin:.6rem 0 .4rem;padding-left:1.3rem}
+.test li{margin:.2rem 0}
+.expect{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:.6rem 0 0;font-size:.95rem}
+.expect strong{font-family:var(--display);font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);display:block}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;margin-top:12px}
+.controls .seg{display:flex;gap:6px}
+.controls button{font:600 .85rem var(--display);padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.controls button[aria-pressed="true"][data-v="pass"]{background:var(--pass-soft);border-color:var(--pass);color:var(--pass)}
+.controls button[aria-pressed="true"][data-v="fail"]{background:var(--fail-soft);border-color:var(--fail);color:var(--fail)}
+.controls button[aria-pressed="true"][data-v="blocked"]{background:var(--block-soft);border-color:var(--block);color:var(--block)}
+.controls textarea{flex:1 1 260px;min-width:0;min-height:38px;font:inherit;font-size:.92rem;padding:6px 10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);resize:vertical}
+.tester{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:1rem 0;max-width:640px}
+.tester label{font-size:.85rem;color:var(--muted);display:grid;gap:4px}
+.tester input{font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin:1rem 0}
+.btn{font:600 .95rem var(--display);padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.status-msg{font-size:.9rem;color:var(--muted);align-self:center}
+textarea#resultsText{width:100%;min-height:160px;font-family:var(--mono);font-size:.8rem;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+dl.faq dt{font-family:var(--display);font-weight:600;margin-top:1rem}
+dl.faq dd{margin:.2rem 0 0;max-width:68ch}
+@media (max-width:900px){
+  .wrap{grid-template-columns:minmax(0,1fr);gap:8px}
+  nav.toc{position:static;max-height:none}
+  nav.toc ol{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+}
+@media (prefers-reduced-motion:no-preference){.test{transition:border-color .2s}}
+</style>
+<style>
+/* Tab bar shared by both pages */
+.tabs{border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs .in{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:2px;padding:10px 0;overflow-x:auto}
+.tabs .brand{font-family:var(--display);font-weight:700;letter-spacing:.06em;margin-right:10px;white-space:nowrap;color:var(--accent);font-size:.78rem;text-transform:uppercase}
+.tabs a{padding:7px 9px;border-radius:8px;text-decoration:none;color:var(--muted);font:600 .86rem var(--display);white-space:nowrap}
+.tabs a:hover{background:var(--accent-soft)}
+.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--accent)}
+/* Training page */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-top:16px;border-left:4px solid var(--accent);scroll-margin-top:16px}
+.card.app{border-left-color:var(--water)}
+.card header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.card h3{margin:0;font-size:1.25rem}
+.card .was{font-size:.78rem;color:var(--muted);font-style:italic}
+.card .one{margin:.5rem 0 .2rem;max-width:72ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 24px;margin-top:.8rem}
+.facts h4{font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0 0 .3rem}
+.facts ul,.facts ol{margin:0;padding-left:1.1rem;font-size:.95rem}
+.facts li{margin:.15rem 0}
+.facts p{margin:0;font-size:.95rem;line-height:1.9}
+.facts .col{white-space:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:.82rem;padding:3px 10px;border-radius:99px;background:var(--accent-soft);color:var(--accent);text-decoration:none;font-weight:600}
+.chip:hover{text-decoration:underline}
+.show{background:var(--water-soft);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:.95rem}
+.show strong{font-family:var(--display);font-size:.78rem;text-transform:uppercase;letter-spacing:.07em;color:var(--water);display:block}
+.show ol{margin:.3rem 0 0;padding-left:1.2rem}
+ol.tight{margin:0;padding-left:1.2rem}
+tr[id]{scroll-margin-top:16px}
+.diagram{overflow-x:auto;margin:1rem 0 .4rem;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:8px}
+.diagram svg{display:block;width:100%;min-width:900px;height:auto;font-family:var(--body)}
+.d-zone{fill:var(--accent-soft);opacity:.45}
+.d-zlabel{font:700 12px var(--display);letter-spacing:.08em;fill:var(--accent)}
+.d-node{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+a:hover .d-node{stroke:var(--accent);stroke-width:2}
+.d-title{font:600 15px var(--display);fill:var(--ink);text-anchor:middle}
+.d-sub{font-size:12px;fill:var(--muted);text-anchor:middle}
+.d-edge{stroke:var(--muted);stroke-width:1.6;fill:none}
+.d-dash{stroke-dasharray:6 5}
+.d-arrow{fill:var(--muted)}
+.d-app{fill:var(--water-soft);stroke:var(--water);stroke-width:1.2}
+a:hover .d-app{stroke-width:2}
+.d-apptext{font:600 12.5px var(--display);fill:var(--water);text-anchor:middle}
+.legend{font-size:.88rem;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.legend .lg{display:inline-block;width:28px;height:0;border-top:2px solid var(--muted);margin-left:6px}
+.legend .lg.dash{border-top-style:dashed}
+.legend .lg.pill{width:26px;height:12px;border:1.5px solid var(--water);border-radius:99px;background:var(--water-soft)}
+</style>
+</head>
+<body>
+<nav class="tabs" aria-label="Guides"><div class="in"><span class="brand">Assurity Consulting · monday.com</span><a href="training.html">How it all fits together</a><a href="./">End-to-end UAT</a><a href="uat-quote-builder.html">Quote Builder</a><a href="uat-approval-portal.html">Approval Portal</a><a href="uat-order-processor.html" aria-current="page">Order Processor</a><a href="uat-workload-planner.html">Workload Planner</a><a href="uat-sample-planner.html">Sample Planner</a><a href="uat-renewal-hub.html">Renewal Hub</a></div></nav>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <p class="label">Contents</p>
+  <div class="overall" id="overall">
+    <div style="display:flex;justify-content:space-between;font-size:.85rem"><span>Your progress</span><span id="overallText" class="count">0 / 0</span></div>
+    <div class="bar" aria-hidden="true"><span class="p" id="barP"></span><span class="f" id="barF"></span><span class="b" id="barB"></span></div>
+  </div>
+  <ol id="tocList">
+    <li><a href="#op-start">Before you start</a></li>
+    <li><a href="#op-list">A. Orders to process <span class="count" data-count="op-list"></span></a></li>
+    <li><a href="#op-order">B. The order page <span class="count" data-count="op-order"></span></a></li>
+    <li><a href="#op-checks">C. Checks <span class="count" data-count="op-checks"></span></a></li>
+    <li><a href="#op-schedule">D. How visits are planned <span class="count" data-count="op-schedule"></span></a></li>
+    <li><a href="#op-access">E. Permissions and Settings <span class="count" data-count="op-access"></span></a></li>
+    <li><a href="#op-reject">F. Rejecting and resubmitting <span class="count" data-count="op-reject"></span></a></li>
+    <li><a href="#op-process">G. Processing an order <span class="count" data-count="op-process"></span></a></li>
+    <li><a href="#op-retry">H. Interrupted runs and re-processing <span class="count" data-count="op-retry"></span></a></li>
+    <li><a href="#op-renewal">I. Renewals from the Contract Renewal Hub <span class="count" data-count="op-renewal"></span></a></li>
+    <li><a href="#op-help">Help and FAQs</a></li>
+    <li><a href="#finish">Send your results</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <p class="eyebrow">Assurity Consulting · Order Processor</p>
+  <h1>Order Processor: in-depth test script</h1>
+  <p class="lead">Checking won orders in the Order Processor: the order checks, how every visit is planned, processing (visits, sample rows, Order and Report numbers, notifications), rejecting and resubmitting, interrupted runs, permissions and Settings, and renewals coming back from the Contract Renewal Hub.</p>
+  <p class="byline">Prepared by Mutherboard · November 2026 · Version 1 · 35 tests · 3–4 hours · For: The Quotes & Orders team, with an admin and a Sales colleague for some tests</p>
+</header>
+
+<section id="op-start">
+  <h2>Before you start</h2>
+  <p>The Order Processor is where the Quotes &amp; Orders team turns a won deal into work. It lists won orders, checks that the order and every quote line are complete, and works out every visit for the whole contract. When you process an order it creates those visits on the <b>Visits</b> board at <b>Ready for Allocation</b>, adds sample planning rows, gives each line a new Order No and Report No, and tells the owner and finance. Orders that are not ready can be sent back to the owner with a reason. The app’s top bar reads <b>Process Order</b>.</p>
+  <h3>What you need</h3>
+  <ul>
+    <li>You on the <b>Quotes &amp; Orders team</b> list in the app’s Settings. Ask an admin to add you.</li>
+    <li>An admin for Section E and for a few steps in G and H. Admins are the people on the <b>Admins</b> list in Settings. While that list is empty, the Opportunities board owners are the admins.</li>
+    <li>A Sales colleague who is <b>not</b> on the Quotes &amp; Orders team and is not an admin. They will be the Owner and CS Manager on your TEST orders, check notifications, and run some steps themselves.</li>
+    <li>A colleague on the <b>Finance recipients</b> list in Settings to check the finance notification. The admin adds them in E3.</li>
+    <li>Access to the Opportunities, Quotes &amp; Invoices, Visits and Samples by Day boards and the Quote Builder. For Section I you also need the Contract Renewal Hub.</li>
+    <li>A second browser tab for a few tests, and a way to switch your Wi-Fi off for a moment (H1).</li>
+  </ul>
+  <h3>Test data</h3>
+  <ul>
+    <li>Replace “Sam” with your own first name everywhere. Use your own email address for the client contact and for every Invoicing Email.</li>
+    <li>A company <b>TEST – Sam – Company</b> with two sites, <b>TEST – Sam – Riverside Offices</b> and <b>TEST – Sam – Hilltop Depot</b>, and a contact whose email is your own.</li>
+    <li><b>TEST – Sam – Order 1</b>. Build it in the Quote Builder and approve it in the portal so the deal is Won.
+      <ul>
+        <li><b>Line A</b> at Riverside: Repeat, Quarterly, 2-year contract (Number of Visits 8), £250 per visit, first visit in week 10 of next year, Contract Year 1, 2 Planned Days per Visit, an Assigned Consultant. Add planned samples for one lab test (for example W1-3 (S) TVC): 4 on Visit 1 and 2 on Visits 2, 3 and 4.</li>
+        <li><b>Line B</b> at Hilltop: One-off, £600, first visit in week 12 of next year, 1 Planned Day per Visit, an Assigned Consultant, no samples.</li>
+        <li>On the opportunity: Confirmation Type Customer Email, Customer Order Ref empty, Invoice Address, Invoicing Email, and Invoice Frequency Quarterly. Owner and CS Manager are your Sales colleague.</li>
+      </ul></li>
+    <li><b>TEST – Sam – Order 2</b>, Won, with one One-off line at Riverside (a different work type): £500, first visit in week 14 of next year, an Assigned Consultant, and Planned Days per Visit left empty. Use the same invoicing details, Owner and CS Manager as Order 1.</li>
+    <li><b>TEST – Sam – Visit patterns</b> (called “Order 3” below), Won, same invoicing details. It has four lines, each a different work type, all with Contract Year 1, an Assigned Consultant and no samples. The first visit is in week 10 of next year, except the one-off, which is in week 12.
+      <ul>
+        <li>A One-off with a quantity of 3, at £600.</li>
+        <li>A Repeat 2-Yearly line over 5 years, at £400.</li>
+        <li>A Repeat line every 2 weeks (Frequency Unit 2, Frequency Measure Weeks) over 1 year, at £150.</li>
+        <li>A Repeat 6-Monthly line over 3 years, at £300.</li>
+      </ul></li>
+    <li>For Section I, a TEST renewal of Order 1 taken to Live in the Contract Renewal Hub. Follow that app’s test script.</li>
+    <li>The examples assume “next year” is 2027. If yours is different, move every year in the examples by the same amount.</li>
+  </ul>
+  <div class="callout warn">Processing creates real items on the Visits and Samples by Day boards and uses up real Order and Report numbers. The app has no undo. Only process, reject or edit your own TEST orders. Never change a real client’s order while testing.</div>
+  <h3>Recording your results</h3>
+  <p>Under each test, choose <b>Pass</b>, <b>Fail</b> or <b>Blocked</b> (you could not run it), and add a note for anything that is not a pass: what you did, what you expected and what you saw. A link to the item or a screenshot helps us fix things quickly.</p>
+  <p>Your marks are saved in this browser only, separately for each app’s script. When you finish, go to <a href="#finish">Send your results</a>, copy them and email them to the Mutherboard project team.</p>
+  <div class="callout"><b>Tests marked “Overnight”</b> depend on a date check that runs each morning. Set things up as the test describes and check the result the next day.</div>
+  <div class="tester">
+    <label for="testerName">Your name<input id="testerName" type="text" autocomplete="name" placeholder="e.g. Sam Taylor"></label>
+    <label for="testerRole">Your team<input id="testerRole" type="text" placeholder="e.g. Sales, Lab, Planning"></label>
+  </div>
+</section>
+
+<section id="op-list" data-section="op-list">
+  <div class="sechead"><h2>A. Orders to process</h2><span class="who">Quotes &amp; Orders team</span></div>
+  <p>The app opens on <b>Orders to process</b>. It lists every opportunity whose Process Order Status is <b>Awaiting Processing</b> or <b>Rejected</b>, most recent Won date first, 25 at a time. When a deal’s Deal Stage changes to Won, the Opportunities board sets Process Order Status to Awaiting Processing, so the deal appears here. Processed orders leave the list.</p>
+  <div class="tests">
+    <article class="test" data-id="A1"><header><span class="tid">A1</span><h4>A won deal appears in the list</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Make sure Order 1 has been approved in the portal.</li>
+      <li>On the Opportunities board, check that Order 1 has Deal Stage <b>Won</b> and Process Order Status <b>Awaiting Processing</b>.</li>
+      <li>Open the Order Processor and find Order 1 in the list.</li></ol>
+      <p class="expect"><strong>You should see</strong>The heading <b>Orders to process</b> and the line “Won orders waiting for the Quotes &amp; Orders team, newest first.” The Order 1 row shows these columns:<br>
+        • the order name, with the Opportunity No underneath<br>
+        • <b>Customer</b>: TEST – Sam – Company<br>
+        • <b>Owner</b>: your Sales colleague<br>
+        • <b>Deal value</b>: in pounds<br>
+        • <b>Won</b>: the date the deal was won, as dd/mm/yyyy<br>
+        • <b>Lines</b>: the number of quote lines linked to the deal (2)<br>
+        • status: an amber <b>Awaiting Processing</b> label<br>
+        The <b>awaiting</b> count at the top right includes Order 1. If there are more than 25 orders, a <b>Load more</b> button appears at the bottom.</p></article>
+
+    <article class="test" data-id="A2"><header><span class="tid">A2</span><h4>Search by order name</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Type <i>TEST – Sam</i> in <b>Search by order name</b> and wait a moment.</li>
+      <li>Change the search to <i>zzzz no match</i>.</li>
+      <li>Clear the search box.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: a small spinner shows in the box while it searches, then only your TEST orders are listed.<br>
+        Step 2: <b>No orders match your search</b> and “Orders appear here once they’re submitted for processing or sent back.”<br>
+        Step 3: the full list is back.<br>
+        Search only matches the order (opportunity) name, and only finds orders that are awaiting processing or rejected.</p></article>
+  </div>
+</section>
+
+<section id="op-order" data-section="op-order">
+  <div class="sechead"><h2>B. The order page</h2><span class="who">Quotes &amp; Orders team</span></div>
+  <p>Click an order to open it. One page shows the header, an action bar with the buttons, and four panels: <b>Order details</b>, <b>Lines</b>, <b>Checks</b> and <b>History</b>. Only the Quotes &amp; Orders team and admins can change anything here. Everyone else sees the same page but cannot edit it.</p>
+  <div class="tests">
+    <article class="test" data-id="B1"><header><span class="tid">B1</span><h4>What the order page shows</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Click Order 1 in the list.</li>
+      <li>Look at the header, the bar under it and the four panels.</li>
+      <li>Click <b>Open in monday</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong><b>Header:</b> a back link, <b>Orders to process</b>. Then the <b>Awaiting Processing</b> label, the Opportunity No, and <b>Open in monday</b>, which opens the opportunity in a new tab. Below are the order name and <b>Customer</b>, <b>Owner</b>, <b>CS Manager</b>, <b>Deal stage</b> (Won), <b>Preferred consultant</b> and <b>Won</b>. <b>Deal value</b> is on the right.<br>
+        <b>Bar:</b> “Ready: 2 lines, 9 visits”, with <b>Reject</b> and <b>Process order</b> buttons.<br>
+        <b>Order details:</b> Confirmation type, Customer order ref, PO expiry, Invoicing email, Invoice frequency, Site grouping and Invoice address.<br>
+        <b>Lines:</b> two rows, with “2 lines to process”, “9 visits” and “£2,600.00 total” at the top.<br>
+        <b>Checks:</b> “Everything looks good.”<br>
+        <b>History:</b> “No activity in this app yet.”</p></article>
+
+    <article class="test" data-id="B2"><header><span class="tid">B2</span><h4>Edit the order details</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 2. Under <b>Order details</b>, click <b>Customer order ref</b> (it shows <i>Not set</i> when empty), type <i>TEST-REF-001</i> and press Enter.</li>
+      <li>Click <b>Invoice address</b>, add a second line to the address and click the tick to save.</li>
+      <li>Click <b>Invoicing email</b>, change a letter, then click the cross instead of the tick.</li>
+      <li>In <b>Invoice frequency</b> choose <b>Other</b>. Then choose <b>Quarterly</b> again.</li>
+      <li>In <b>Site grouping</b> choose <b>Each Site, Own Line Item</b>.</li>
+      <li>Open Order 2 on the Opportunities board and compare.</li>
+      <li>Clear Customer order ref again: click it, delete the text and click the tick. Later tests need it empty.</li></ol>
+      <p class="expect"><strong>You should see</strong>Every save shows <b>Saved</b>, and the new value stays on screen.<br>
+        The cross throws the change away: the email is unchanged and no <b>Saved</b> message appears.<br>
+        While <b>Other</b> is chosen, a line “Other frequency:” shows the Other Invoicing Frequency text (or — if it is empty).<br>
+        On the board: Customer Order Ref is TEST-REF-001 until step 7, Invoice Address has both lines, Invoice Frequency is Quarterly, and the site grouping is Each Site, Own Line Item.<br>
+        If 🟠PO Expiry Date is filled in on the board, the label reads “PO expiry (date on file dd/mm/yyyy)”.</p></article>
+
+    <article class="test" data-id="B3"><header><span class="tid">B3</span><h4>Change a line’s first week, contract year and days</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 1. Click the arrow at the start of Line A’s row to preview its visits.</li>
+      <li>In <b>1st week</b>, change 10 to 11 and press Enter.</li>
+      <li>In <b>Contract yr</b>, type 2 and press Enter.</li>
+      <li>Try values that are not allowed, pressing Enter after each one: 60 in 1st week, 1999 in <b>Year</b>, 6 in Contract yr, 31 in <b>Days</b>.</li>
+      <li>Open Order 2 and look at the <b>Days</b> box on its line. Its Planned Days per Visit is empty.</li>
+      <li>Put Line A back to week 10 and Contract yr 1.</li></ol>
+      <p class="expect"><strong>You should see</strong>Each valid change shows <b>Line updated</b> and the preview redraws.<br>
+        After step 2: the visits are in weeks 11, 24, 37 and 50.<br>
+        After step 3: the first four show <b>Yr 2</b> and the last four <b>Yr 3</b>. On Quotes &amp; Invoices, Line A shows First Visit — Week Number 11 and First Visit — Contract Year “Year 2”.<br>
+        Step 4: each value snaps back to the old number with no message, and nothing is saved. The limits are week 1–53, year 2000–2100, contract year 1–5 and days 0–30.<br>
+        Step 5: Order 2’s Days box shows <b>1</b>, the default from Settings, even though the board column is empty.</p></article>
+  </div>
+</section>
+
+<section id="op-checks" data-section="op-checks">
+  <div class="sechead"><h2>C. Checks</h2><span class="who">Quotes &amp; Orders team</span></div>
+  <p>The <b>Checks</b> panel runs every time the order opens and every time you change something. There are three kinds of check:</p>
+  <ul>
+    <li><b>Must fix</b> items block processing.</li>
+    <li><b>Check before saving</b> items are warnings. You must tick <b>I’ve checked these</b> before you can process.</li>
+    <li>A “Live on Verbal” order needs the CS Manager sign-off box ticked.</li>
+  </ul>
+  <p>The bar next to <b>Process order</b> always says what is blocking it, and hovering over the greyed-out button shows the same reason. Line checks only cover lines that are still to be processed.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>What is checked</th><th>Message (line messages start with the line name)</th><th>Kind</th></tr></thead>
+    <tbody>
+      <tr><td>Deal is Won</td><td>Deal Stage is "…" – it must be Won.</td><td>Must fix</td></tr>
+      <tr><td>The order has lines</td><td>There are no quote lines on this order.</td><td>Must fix</td></tr>
+      <tr><td>Confirmation Type</td><td>Confirmation Type is missing.</td><td>Must fix</td></tr>
+      <tr><td>Purchase order reference</td><td>Purchase Order Document needs a Customer Order Ref.</td><td>Must fix</td></tr>
+      <tr><td>Invoicing Email</td><td>Invoicing Email is missing.</td><td>Must fix</td></tr>
+      <tr><td>Invoice Address</td><td>Invoice Address is missing.</td><td>Must fix</td></tr>
+      <tr><td>Invoice Frequency</td><td>Invoice Frequency is missing.</td><td>Must fix</td></tr>
+      <tr><td>Line site</td><td>…: no site linked.</td><td>Must fix</td></tr>
+      <tr><td>Line work type</td><td>…: no work type.</td><td>Must fix</td></tr>
+      <tr><td>Line price</td><td>…: no price per visit.</td><td>Must fix</td></tr>
+      <tr><td>First visit year</td><td>…: First Visit – Calendar Year is missing.</td><td>Must fix</td></tr>
+      <tr><td>First visit week</td><td>…: First Visit – Week Number must be 1–53.</td><td>Must fix</td></tr>
+      <tr><td>Planned samples</td><td>…: Planned Samples can't be read – re-save it from the Quote Builder.</td><td>Must fix</td></tr>
+      <tr><td>Number of visits</td><td>…: can't work out the number of visits – add Number of Visits or Contract Period.</td><td>Must fix</td></tr>
+      <tr><td>First visit long ago</td><td>…: Week 10 2026 is over 6 months ago – likely a mistake.</td><td>Warning</td></tr>
+      <tr><td>First visit in the past</td><td>…: first visit (week 40 2026) is already in the past.</td><td>Warning</td></tr>
+      <tr><td>Consultant</td><td>…: no Assigned Consultant.</td><td>Warning</td></tr>
+      <tr><td>Live on Verbal</td><td>Confirmed “Live on Verbal” – needs CS Manager sign-off.</td><td>Sign-off tick</td></tr>
+    </tbody>
+  </table></div>
+  <p>Lines whose Status is <b>Cancelled</b>, <b>Declined</b> or <b>Superseded</b>, and renewal lines that were made dead, are left out completely. If every line on an order is left out, Lines shows “No quote lines are linked to this order yet.”</p>
+  <div class="tests">
+    <article class="test" data-id="C1"><header><span class="tid">C1</span><h4>Order details must be complete</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 2. Under Order details, clear <b>Invoicing email</b> and <b>Invoice address</b>: click each, delete the text and click the tick.</li>
+      <li>On the Opportunities board, on Order 2, clear Invoice Frequency and Confirmation Type, and change Deal Stage to Negotiation.</li>
+      <li>In the app, click <b>Orders to process</b> and reopen Order 2. Hover over <b>Process order</b>.</li>
+      <li>Put Deal Stage back to Won and fill in the four fields again. Reopen Order 2.</li>
+      <li>In <b>Confirmation type</b> choose <b>Purchase Order Document</b>, leaving Customer order ref empty.</li>
+      <li>Type a reference into <b>Customer order ref</b>. Then choose <b>Signed Order Confirmation</b> and clear the reference again.</li>
+      <li>Set Confirmation type back to <b>Customer Email</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 3: <b>Must fix (5)</b> with these items:<br>
+        • Deal Stage is "Negotiation" – it must be Won.<br>
+        • Invoicing Email is missing.<br>
+        • Invoice Address is missing.<br>
+        • Invoice Frequency is missing.<br>
+        • Confirmation Type is missing.<br>
+        The bar reads <b>Fix the “Must fix” items first</b>, and Process order is greyed out with the same tip.<br>
+        Step 4: the Must fix list disappears.<br>
+        Step 5: “Purchase Order Document needs a Customer Order Ref.” appears.<br>
+        Step 6: that message goes once a reference is entered. Signed Order Confirmation needs no reference.</p></article>
+
+    <article class="test" data-id="C2"><header><span class="tid">C2</span><h4>Live on Verbal needs CS Manager sign-off</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 1. In <b>Confirmation type</b> choose <b>Live on Verbal</b>.</li>
+      <li>Look at Checks and the bar.</li>
+      <li>Tick the box that names your CS Manager.</li>
+      <li>Untick it, then tick it again.</li>
+      <li>Leave Order 1 on Live on Verbal, because G1 processes it this way.</li></ol>
+      <p class="expect"><strong>You should see</strong>Under <b>Check before saving</b>: “Confirmed “Live on Verbal” – needs CS Manager sign-off.” There is a tick box reading “[CS Manager’s name] (CS Manager) has signed this off”, or “The CS Manager has signed this off” if the order has no CS Manager.<br>
+        The bar reads <b>Confirm CS Manager sign-off first</b> and Process order is greyed out.<br>
+        When ticked, the bar shows “Ready: 2 lines, 9 visits” and the button works. When unticked, it is blocked again.<br>
+        The tick is not saved: it clears whenever the page reloads.</p></article>
+
+    <article class="test" data-id="C3"><header><span class="tid">C3</span><h4>First visit week and year are required</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 2. Clear the line’s <b>1st week</b> box and press Enter.</li>
+      <li>Click the arrow at the start of the row to preview its visits.</li>
+      <li>Type 14 back into 1st week. Then clear <b>Year</b> and press Enter.</li>
+      <li>Type next year back into Year.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: <b>Line updated</b>, then the Must fix item “[line name]: First Visit – Week Number must be 1–53.” The Visits column shows a red <b>?</b>.<br>
+        Step 2: the preview says “Visits can’t be previewed until the first week, year and number of visits are set.”<br>
+        Step 3: “[line name]: First Visit – Calendar Year is missing.”<br>
+        Step 4: both messages are gone and Visits shows 1 again.</p></article>
+
+    <article class="test" data-id="C4"><header><span class="tid">C4</span><h4>Line details from the Quotes &amp; Invoices board</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the Quotes &amp; Invoices board, make each of these changes to Order 2’s line, one at a time. After each one, reopen Order 2 in the app, look at Checks, then put the value back:
+        <ul>
+          <li>clear Actual Selling Price;</li>
+          <li>remove the linked site from the line;</li>
+          <li>clear the line’s work type;</li>
+          <li>type <i>abc</i> into 🟢Planned Samples (per visit), and clear it again afterwards.</li>
+        </ul></li>
+      <li>On Order 3’s 6-Monthly line, clear both Number of Visits and Contract Period (Years). Reopen Order 3, then put back 6 and 3.</li></ol>
+      <p class="expect"><strong>You should see</strong>A Must fix item for each change, gone again once the value is put back:<br>
+        • Price cleared: “…: no price per visit.”, and <b>Per visit</b> shows —.<br>
+        • Site removed: “…: no site linked.”, and the Site column shows a red <b>No site</b>.<br>
+        • Work type cleared: “…: no work type.”, and Work type shows a red —.<br>
+        • Samples set to <i>abc</i>: “…: Planned Samples can't be read – re-save it from the Quote Builder.”, with “Samples: can’t be read” under the site.<br>
+        • Order 3: “…: can't work out the number of visits – add Number of Visits or Contract Period.”, with a red <b>?</b> in Visits.</p></article>
+
+    <article class="test" data-id="C5"><header><span class="tid">C5</span><h4>Warnings need “I’ve checked these”</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the Quotes &amp; Invoices board, remove the Assigned Consultant from Order 2’s line. Reopen Order 2.</li>
+      <li>Tick <b>I’ve checked these</b>.</li>
+      <li>Change 1st week to a week about a month ago, and Year to this year.</li>
+      <li>Change Year to last year.</li>
+      <li>Click <b>Orders to process</b> and reopen Order 2.</li>
+      <li>Put back the consultant, week 14 and next year.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: under <b>Check before saving</b>, “…: no Assigned Consultant.” and the tick box. The bar reads <b>Tick “I’ve checked these” first</b>, and Process order is greyed out.<br>
+        Step 2: “Ready: 1 lines, 1 visits”.<br>
+        Step 3: “…: first visit (week W YYYY) is already in the past.”, with your week and year.<br>
+        Step 4: “…: Week W YYYY is over 6 months ago – likely a mistake.”<br>
+        Step 5: the tick has cleared and must be ticked again.<br>
+        The check uses the Monday of the week, so the current week already counts as “in the past”.</p></article>
+
+    <article class="test" data-id="C6"><header><span class="tid">C6</span><h4>Cancelled, declined and superseded lines are left out</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 3 and note the figures at the top of Lines: lines to process, visits and total.</li>
+      <li>On the Quotes &amp; Invoices board, note the Status of Order 3’s one-off line, then change it to <b>Cancelled</b>. Reopen Order 3.</li>
+      <li>Try <b>Declined</b> and <b>Superseded</b> the same way, if your board has those labels.</li>
+      <li>Put the Status back to what it was and reopen Order 3.</li></ol>
+      <p class="expect"><strong>You should see</strong>While the Status is Cancelled, Declined or Superseded, the one-off line is not listed and not checked. The totals drop by exactly 1 line, 3 visits and £1,800.00. After step 4 the line and the totals are back.</p></article>
+  </div>
+</section>
+
+<section id="op-schedule" data-section="op-schedule">
+  <div class="sechead"><h2>D. How visits are planned</h2><span class="who">Quotes &amp; Orders team</span></div>
+  <p>Before anything is created, the app works out how many visits each line has and which week each visit is planned for. To see the plan, click the arrow at the start of a line. Each preview chip reads like “#2 · wk 23 2027 · Yr 1 · £250.00”: the visit number, the planned week and year, the contract year, and the visit value.</p>
+  <div class="callout"><b>How many visits:</b> a one-off line has its quantity, or 1 if there is no quantity. For other lines, the app uses the line’s Number of Visits if it is filled in. Otherwise it multiplies visits per year by Contract Period (Years), rounding 2-yearly lines up.<br>
+    <b>Visits per year:</b> if Frequency Unit and Frequency Measure are both set, they decide it. Every N weeks = 52 ÷ N, every N months = 12 ÷ N, every N years = 1 ÷ N. Otherwise the app uses Visit Frequency: Quarterly 4, 4-Monthly 3, 6-Monthly 2, Yearly 1, 2-Yearly ½.<br>
+    <b>Spacing:</b> visits are 52 ÷ (visits per year) weeks apart, rounded. Each new contract year starts again at the first week. A week past 52 carries on from week 1 of the next year. 2-yearly visits are every other year, in the same week. One-off visits all share the first week.<br>
+    <b>Value:</b> every visit is worth the line’s price per visit.</div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Line (first visit week 10, 2027, Contract Year 1)</th><th>Visits</th><th>Planned weeks</th></tr></thead>
+    <tbody>
+      <tr><td>One-off</td><td>1, or the quantity</td><td>All in week 10 2027</td></tr>
+      <tr><td>Quarterly, 2-year contract</td><td>4 × 2 = 8</td><td>Weeks 10, 23, 36 and 49 in 2027 (Yr 1) and in 2028 (Yr 2)</td></tr>
+      <tr><td>4-Monthly, 1 year</td><td>3</td><td>Weeks 10, 27 and 44 in 2027</td></tr>
+      <tr><td>6-Monthly, 3 years</td><td>2 × 3 = 6</td><td>Weeks 10 and 36 in 2027, 2028 and 2029 (Yr 1–3)</td></tr>
+      <tr><td>Yearly, 3 years</td><td>3</td><td>Week 10 in 2027, 2028 and 2029 (Yr 1, 2 and 3)</td></tr>
+      <tr><td>2-Yearly, 5 years</td><td>5 × ½ = 2.5, rounded up to 3</td><td>Week 10 in 2027 (Yr 1), 2029 (Yr 3) and 2031 (Yr 5)</td></tr>
+      <tr><td>Every 2 Weeks, 1 year</td><td>52 ÷ 2 = 26</td><td>Weeks 10, 12 … 52 in 2027, then weeks 2, 4, 6 and 8 in 2028, all Yr 1</td></tr>
+      <tr><td>Every 2 Months, 1 year</td><td>12 ÷ 2 = 6</td><td>9 weeks apart: weeks 10, 19, 28, 37 and 46 in 2027, then week 3 in 2028</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tests">
+    <article class="test" data-id="D1"><header><span class="tid">D1</span><h4>One-off lines</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 2 and preview its line.</li>
+      <li>Open Order 3 and preview the one-off line (quantity 3).</li></ol>
+      <p class="expect"><strong>You should see</strong>Order 2: Frequency <b>One-off</b>, Visits 1, and one chip, “#1 · wk 14 2027 · Yr 1 · £500.00”.<br>
+        Order 3: Visits 3, and chips #1, #2 and #3, all “wk 12 2027 · Yr 1 · £600.00”. This line adds £1,800.00 to the Lines total.</p></article>
+
+    <article class="test" data-id="D2"><header><span class="tid">D2</span><h4>A quarterly 2-year line gives 8 visits</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 1 and preview Line A.</li>
+      <li>On the Quotes &amp; Invoices board, change Line A’s Number of Visits to 6. Reopen Order 1 and preview Line A again.</li>
+      <li>Put Number of Visits back to 8.</li></ol>
+      <p class="expect"><strong>You should see</strong>Frequency <b>Quarterly</b>, Visits 8, and “Samples: 4 on day 1” under the site. There are eight chips, each £250.00:<br>
+        • Yr 1, 2027: #1 wk 10, #2 wk 23, #3 wk 36, #4 wk 49<br>
+        • Yr 2, 2028: #5 wk 10, #6 wk 23, #7 wk 36, #8 wk 49<br>
+        Chip #1 ends “4 samples day 1”; the others end “2 samples day 1”. Line A is worth £250 × 8 = £2,000, and with Line B the Lines total is £2,600.00.<br>
+        With Number of Visits 6, there are six chips. The last two are wk 10 and wk 23 2028 (Yr 2), and the line is worth £1,500. Number of Visits always wins over the contract period.</p></article>
+
+    <article class="test" data-id="D3"><header><span class="tid">D3</span><h4>Visits carry into the next year</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On Order 1, change Line A’s <b>1st week</b> to 40 and preview it.</li>
+      <li>Put it back to 10.</li></ol>
+      <p class="expect"><strong>You should see</strong>Yr 1: #1 wk 40 2027, #2 wk 1 2028, #3 wk 14 2028, #4 wk 27 2028.<br>
+        Yr 2: #5 wk 40 2028, #6 wk 1 2029, #7 wk 14 2029, #8 wk 27 2029.<br>
+        The week never goes above 52. The contract year changes every 4 visits, not at the turn of the calendar year.</p></article>
+
+    <article class="test" data-id="D4"><header><span class="tid">D4</span><h4>2-yearly and 6-monthly lines</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the Quotes &amp; Invoices board, clear Number of Visits on Order 3’s 2-Yearly line. Leave Contract Period (Years) at 5.</li>
+      <li>Open Order 3 and preview the 2-Yearly and 6-Monthly lines.</li></ol>
+      <p class="expect"><strong>You should see</strong>2-Yearly: Visits 3 (5 × ½ = 2.5, rounded up). The chips are wk 10 2027 Yr 1, wk 10 2029 Yr 3 and wk 10 2031 Yr 5, each £400.00, so £1,200 for the line.<br>
+        6-Monthly: Visits 6, in weeks 10 and 36 of 2027 (Yr 1), 2028 (Yr 2) and 2029 (Yr 3), each £300.00, so £1,800 for the line.</p></article>
+
+    <article class="test" data-id="D5"><header><span class="tid">D5</span><h4>Every N weeks or months</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the Quotes &amp; Invoices board, clear Number of Visits on Order 3’s every-2-weeks line. Contract Period (Years) stays at 1.</li>
+      <li>Open Order 3 and preview that line.</li>
+      <li>On the board, change the line’s Frequency Measure to Months. Reopen Order 3 and preview the line again.</li>
+      <li>Change Frequency Measure back to Weeks.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the Frequency column shows “Every 2” followed by the measure (for example <b>Every 2 Weeks</b>), and Visits 26 (52 ÷ 2). Chips #1–#22 are in weeks 10, 12, 14 … 52 of 2027, and #23–#26 are in weeks 2, 4, 6 and 8 of 2028. All are Yr 1 and £150.00, so £3,900 for the line.<br>
+        Step 3: Every 2 Months, Visits 6 (12 ÷ 2), in weeks 10, 19, 28, 37 and 46 of 2027 and week 3 of 2028, all Yr 1.<br>
+        Step 4: back to 26 visits. Order 3 now shows “4 lines to process”, “38 visits” and “£8,700.00 total”.</p></article>
+  </div>
+</section>
+
+<section id="op-access" data-section="op-access">
+  <div class="sechead"><h2>E. Permissions and Settings</h2><span class="who">Admin, Quotes &amp; Orders team, Sales</span></div>
+  <p>Only admins see the <b>Settings</b> link (with a gear) in the top bar. Settings has three people lists and five numbers. Admins also count as members of the Quotes &amp; Orders team.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Can they…</th><th>Everyone else</th><th>Quotes &amp; Orders team</th><th>Admins</th></tr></thead>
+    <tbody>
+      <tr><td>See the list, open orders, preview visits</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Submit for processing (order not yet submitted, or rejected)</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Edit order details and line boxes</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Reject, Process order, Continue processing</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Open Settings</td><td>No</td><td>No</td><td>Yes</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">Do not change <b>Next Order No</b> or <b>Next Report No</b> during testing: they number real orders. Saving Settings writes back every value that was on screen when you opened the page. So open Settings fresh, make your change and save straight away. Never leave Settings open while others are processing orders.</div>
+  <div class="tests">
+    <article class="test" data-id="E1"><header><span class="tid">E1</span><h4>Who can do what</h4><span class="tag">Two people</span><span class="role">Sales + Quotes &amp; Orders team</span></header>
+      <ol><li>Your Sales colleague (not on the team, not an admin) opens the Order Processor and opens Order 3.</li>
+      <li>They click a value under Order details, try to type in a 1st week box, and click a preview arrow.</li>
+      <li>You (on the team, not an admin) open Order 3.</li></ol>
+      <p class="expect"><strong>You should see</strong>Your colleague:<br>
+        • can see the list and the order, but has no Settings link;<br>
+        • sees the bar “Only the Quotes &amp; Orders team can process this order.”;<br>
+        • has no <b>Reject</b> or <b>Process order</b> buttons, and no <b>Submit for processing</b> either, because the order is already awaiting processing;<br>
+        • can’t edit anything under Order details: the dropdowns show as plain text, and the line boxes can’t be typed in;<br>
+        • can still use the preview.<br>
+        You: you see Reject and Process order and can edit, but you have no Settings link unless you are an admin.</p></article>
+
+    <article class="test" data-id="E2"><header><span class="tid">E2</span><h4>Admins, and the board-owner fallback</h4><span class="tag">Admin</span><span class="tag">Two people</span><span class="role">Admin</span></header>
+      <ol><li>As an admin, click <b>Settings</b>.</li>
+      <li>If the <b>Admins</b> list is empty, ask an Opportunities board owner and a non-owner to open the app and look at the top bar.</li>
+      <li>Use <b>Add person</b> to add everyone who should be an admin, including yourself, and click <b>Save settings</b>.</li>
+      <li>Ask a board owner who is not on the Admins list, and not on the Quotes &amp; Orders team, to reopen the app and open any order.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the <b>Settings</b> page, with “Who can do what, and how orders are numbered and processed.” The Admins hint reads “Can change these settings. Until someone is added, the Opportunities board owners are admins.”<br>
+        Step 2: while the list is empty, board owners see the Settings link and others do not.<br>
+        Step 3: <b>Settings saved</b>, and from then on only listed people see Settings.<br>
+        Step 4: the board owner has lost Settings, and has also lost the Reject and Process order buttons.<br>
+        An admin who is not on the Quotes &amp; Orders team list can still process orders. Never remove yourself: you lose access as soon as you save.</p></article>
+
+    <article class="test" data-id="E3"><header><span class="tid">E3</span><h4>Team and finance lists</h4><span class="tag">Admin</span><span class="tag">Two people</span><span class="role">Admin</span></header>
+      <ol><li>In Settings, under <b>Quotes &amp; Orders team</b>, click <b>Add person</b>. Type part of your Sales colleague’s name or email and pick them.</li>
+      <li>Click Add person again and type a name that doesn’t exist.</li>
+      <li>Click <b>Save settings</b>. Ask the colleague to reopen Order 3.</li>
+      <li>Remove the colleague with the cross on their name and save. Ask them to reopen Order 3 again.</li>
+      <li>Under <b>Finance recipients</b>, add the colleague who will check the finance notification in G6, and save.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the person appears as a name tag and drops out of the search list.<br>
+        Step 2: <b>No one found.</b><br>
+        Steps 3 and 4: each save shows <b>Settings saved</b>. While on the team, the colleague sees Reject and Process order and can edit. After removal they can only view again.<br>
+        The hints read “Can process and reject orders, and are notified when one is submitted.” and “Get a notification with the invoicing details when an order is processed.”<br>
+        Changes you haven’t saved are lost if you leave the page.</p></article>
+
+    <article class="test" data-id="E4"><header><span class="tid">E4</span><h4>Number settings: limits and blanks</h4><span class="tag">Admin</span><span class="role">Admin</span></header>
+      <ol><li>In Settings, write down the current values.</li>
+      <li>Set <b>Batch size</b> to 60 and click Save settings.</li>
+      <li>Put Batch size back. Set <b>Default days per visit</b> to 0.25 and save.</li>
+      <li>Put it back. Then clear <b>Past-week warning (months)</b>, Default days per visit and Batch size, and save.</li>
+      <li>Click <b>Orders to process</b>, then <b>Settings</b> again.</li>
+      <li>Put back the values you wrote down and save.</li></ol>
+      <p class="expect"><strong>You should see</strong>Steps 2 and 3: a red error message, and nothing is saved. The limits are Past-week warning 1–60 whole months, Default days 0.5–30 and Batch size 1–50.<br>
+        Step 4: <b>Settings saved</b>.<br>
+        Step 5: the cleared fields show their defaults: 6, 1 and 20. A blank or 0 always saves as the default.</p></article>
+
+    <article class="test" data-id="E5"><header><span class="tid">E5</span><h4>Past-week warning and default days take effect</h4><span class="tag">Admin</span><span class="role">Admin + Quotes &amp; Orders team</span></header>
+      <ol><li>Admin: set Past-week warning (months) to 3 and Default days per visit to 2, then save.</li>
+      <li>Open Order 2 and look at the line’s <b>Days</b>.</li>
+      <li>Set its 1st week and Year to a week about 4 months ago.</li>
+      <li>Admin: set Past-week warning back to 6. Reopen Order 2.</li>
+      <li>Put the line back to week 14 of next year. Admin: set Default days per visit back to 1.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 2: Days shows 2, because the line has no Planned Days per Visit.<br>
+        Step 3: “…: Week W YYYY is over 3 months ago – likely a mistake.”<br>
+        Step 4: the warning becomes “…: first visit (week W YYYY) is already in the past.”<br>
+        Settings changes show up the next time an order is opened.</p></article>
+  </div>
+</section>
+
+<section id="op-reject" data-section="op-reject">
+  <div class="sechead"><h2>F. Rejecting and resubmitting</h2><span class="who">Quotes &amp; Orders team, Sales</span></div>
+  <p>The team can send an order back with a reason. The order becomes <b>Rejected</b> and stays in the list with a red label. The owner fixes the problem on the boards and clicks <b>Submit for processing</b>. Anyone can submit, and everyone on the Quotes &amp; Orders team list is notified.</p>
+  <div class="tests">
+    <article class="test" data-id="F1"><header><span class="tid">F1</span><h4>Reject an order with a reason</h4><span class="tag">Two people</span><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 2 and click <b>Reject</b>.</li>
+      <li>Type <i>ab</i> in the reason box.</li>
+      <li>Change the reason to <i>TEST – please add the customer PO number</i> and click <b>Reject order</b>.</li>
+      <li>Go back to <b>Orders to process</b>. Then look at Order 2 on the Opportunities board, including its Updates.</li>
+      <li>Ask your Sales colleague (Owner and CS Manager) to check their monday notifications.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: a box titled <b>Reject this order</b>, with “Tell the owner what needs fixing. They and the CS Manager will be notified.” <b>Cancel</b> closes it without changes.<br>
+        Step 2: <b>Reject order</b> stays greyed out until the reason has at least 3 characters.<br>
+        Step 3: <b>Order sent back to the owner</b>, and a red box “Sent back by [you] on dd/mm/yyyy” showing your reason. The label is <b>Rejected</b> and the Reject button has gone. History shows “Rejected · [you] · date time” and the reason.<br>
+        Step 4: in the list, Order 2 has a red Rejected label and the <b>rejected</b> count is up by 1. On the board, Process Order Status is Rejected. Process Order Notes has a new line, “dd/mm/yyyy – Rejected by [you]: TEST – please add the customer PO number”, and the same text is posted as an update.<br>
+        Step 5: your colleague has the notification: Order "TEST – Sam – Order 2" was sent back: TEST – please add the customer PO number.</p></article>
+
+    <article class="test" data-id="F2"><header><span class="tid">F2</span><h4>The owner fixes and resubmits</h4><span class="tag">Two people</span><span class="role">Sales</span></header>
+      <ol><li>Your Sales colleague opens the Order Processor and opens Order 2.</li>
+      <li>On the Opportunities board, they set Order 2’s Customer Order Ref to <i>TEST-PO-002</i>.</li>
+      <li>They open Order 2 in a second browser tab as well.</li>
+      <li>In the first tab they click <b>Submit for processing</b>, type <i>TEST – PO added</i> and click <b>Submit</b>.</li>
+      <li>In the second tab they click <b>Submit for processing</b>, then <b>Submit</b>.</li>
+      <li>You check your monday notifications.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the red “Sent back by …” box with the reason. The bar reads “Only the Quotes &amp; Orders team can process this order.”, and the only button is <b>Submit for processing</b>.<br>
+        Step 4: the box says “The Quotes &amp; Orders team will be notified and will check the order.” After submitting you see <b>Submitted to the Quotes &amp; Orders team</b>. The label changes to <b>Awaiting Processing</b>, and the red box and the Submit button disappear. History shows “Submitted · [colleague] · date time” and the note. Process Order Notes gains the line “dd/mm/yyyy – Submitted for processing by [colleague]: TEST – PO added”.<br>
+        Step 5: the error <b>This order has already been submitted.</b>, and nothing changes.<br>
+        Step 6: everyone on the Settings team list, including you, has the notification: New order to process: "TEST – Sam – Order 2" (submitted by [colleague]).</p></article>
+  </div>
+</section>
+
+<section id="op-process" data-section="op-process">
+  <div class="sechead"><h2>G. Processing an order</h2><span class="who">Quotes &amp; Orders team</span></div>
+  <p>When you click <b>Process order</b>, the app does five things in order:</p>
+  <ol>
+    <li>Gives each line the next Order No and Report No.</li>
+    <li>Creates the visits in batches, each named Report No/visit number.</li>
+    <li>Adds the Samples by Day rows for lines with planned samples.</li>
+    <li>Marks the opportunity <b>Processed</b>.</li>
+    <li>Posts an update and notifies the owner and the Finance recipients.</li>
+  </ol>
+  <p>Below, “A” stands for Line A’s new Report No and “B” for Line B’s. The table shows the 9 visits Order 1 should produce.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Visit</th><th>Visit Number</th><th>Proposed Week Number</th><th>Proposed Calendar Year</th><th>Proposed Contract Year</th><th>Visit Value</th><th>Planned Days at Site</th><th>Day 1 samples</th></tr></thead>
+    <tbody>
+      <tr><td>A/1</td><td>1</td><td>10</td><td>2027</td><td>1</td><td>£250</td><td>2</td><td>4</td></tr>
+      <tr><td>A/2</td><td>2</td><td>23</td><td>2027</td><td>1</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>A/3</td><td>3</td><td>36</td><td>2027</td><td>1</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>A/4</td><td>4</td><td>49</td><td>2027</td><td>1</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>A/5</td><td>5</td><td>10</td><td>2028</td><td>2</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>A/6</td><td>6</td><td>23</td><td>2028</td><td>2</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>A/7</td><td>7</td><td>36</td><td>2028</td><td>2</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>A/8</td><td>8</td><td>49</td><td>2028</td><td>2</td><td>£250</td><td>2</td><td>2</td></tr>
+      <tr><td>B/1</td><td>1</td><td>12</td><td>2027</td><td>1</td><td>£600</td><td>1</td><td>No rows</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout warn">This creates real items and uses real numbers, and the app has no undo. Only process your TEST orders.</div>
+  <div class="tests">
+    <article class="test" data-id="G1"><header><span class="tid">G1</span><h4>Process Order 1</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Ask an admin to open Settings and write down <b>Next Order No</b> and <b>Next Report No</b>, or note that they are blank. You need these for G3.</li>
+      <li>Open Order 1. Tick the CS Manager sign-off box from C2. If <b>I’ve checked these</b> is shown, tick that too.</li>
+      <li>Click <b>Process order</b>, read the box, then click <b>Yes, process order</b>.</li>
+      <li>Watch until it finishes, then go back to <b>Orders to process</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the bar reads “Ready: 2 lines, 9 visits”.<br>
+        Step 3: the box <b>Process this order?</b> says “This will create 9 visits across 2 lines at “Ready for Allocation” and give each line a new Order No and Report No.” While it runs, the button reads <b>Working…</b>, a progress bar fills, and the text goes from “Creating visit 1 of 9…” to “Finishing off…”.<br>
+        When it finishes: <b>Order processed – visits are Ready for Allocation</b>, and the label changes to <b>Processed</b>. A green panel “This order has been processed” has a <b>View in Site Visit Workflow</b> button, “Report numbers:” with the two new Report Nos, “9 visits”, and one chip per visit (for example “A/1 · wk 10 2027 · £250.00”). The Checks panel and the buttons have gone, and nothing can be edited.<br>
+        Step 4: Order 1 is no longer in the list, and the <b>awaiting</b> count is down by 1.</p></article>
+
+    <article class="test" data-id="G2"><header><span class="tid">G2</span><h4>The visits on the Visits board</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the processed Order 1, click <b>View in Site Visit Workflow</b>. The button still uses the Visits board’s old name.</li>
+      <li>Search the board for Line A’s Report No, then for Line B’s.</li>
+      <li>Open A/2 and B/1, and compare all 9 visits with the table above.</li></ol>
+      <p class="expect"><strong>You should see</strong>Exactly 9 visits, A/1 to A/8 and B/1, each matching the table.<br>
+        A/2 has:<br>
+        • Visit Number 2<br>
+        • Visit Value £250<br>
+        • Planned Days at Site 2<br>
+        • Visit Stage <b>Ready for Allocation</b><br>
+        • Proposed Week Number 23, Proposed Calendar Year 2027, Proposed Contract Year 1<br>
+        • 🔗Opportunity Order 1, 🔗Quote Line A, 🔗Site TEST – Sam – Riverside Offices<br>
+        • the same Opportunity No as Order 1<br>
+        B/1 has Visit Value £600, Planned Days at Site 1, week 12 2027 and the Hilltop site.<br>
+        On Quotes &amp; Invoices, each line now links to its own visits.</p></article>
+
+    <article class="test" data-id="G3"><header><span class="tid">G3</span><h4>Order No and Report No</h4><span class="tag">Admin</span><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the Quotes &amp; Invoices board, look at Order No, Report No and Order Date on Line A and Line B.</li>
+      <li>Ask the admin to reopen Settings.</li>
+      <li>Look at the History panel on Order 1.</li></ol>
+      <p class="expect"><strong>You should see</strong>Call the values you wrote down in G1 N (Order No) and R (Report No).<br>
+        Step 1: the line listed first in the Lines table has Order No N and Report No R. The second line has N+1 and R+1, because every line gets its own pair. Order Date on each line is today, if it was empty before.<br>
+        Step 2: Settings now shows N+2 and R+2.<br>
+        Step 3: History says “orders N, N+1” and “reports R, R+1”.<br>
+        If the Settings fields were blank in G1, N and R are the highest Order No and Report No on Quotes &amp; Invoices plus 1, and Settings now holds the next numbers. The numbers move forward before any visits are created, so they are never reused.</p></article>
+
+    <article class="test" data-id="G4"><header><span class="tid">G4</span><h4>Sample rows on Samples by Day</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open the Samples by Day board and search for Line A’s Report No.</li>
+      <li>Open A/1 – Day 1, A/1 – Day 2 and A/5 – Day 1.</li></ol>
+      <p class="expect"><strong>You should see</strong>16 rows: two per visit, because Line A has 2 days per visit. They are named “A/1 – Day 1”, “A/1 – Day 2” and so on, up to “A/8 – Day 2”.<br>
+        Every row has Sample Status <b>Planned</b>, a Day Number of 1 or 2, and 🔗Visit linked to the matching visit.<br>
+        Day 1 rows hold the samples for your lab test: 4 on A/1, and 2 on A/2 to A/8. Every other test column is 0, and Day 2 rows are all 0.<br>
+        There are no rows for B/1, because Line B has no planned samples.<br>
+        Visits 5 onwards reuse the Visit 4 numbers from the Quote Builder. If your team expects visit 5 (the first visit of year 2) to repeat Visit 1’s numbers, log a query.</p></article>
+
+    <article class="test" data-id="G5"><header><span class="tid">G5</span><h4>The opportunity record is updated</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 1 on the Opportunities board and look at its columns and Updates.</li>
+      <li>In the app, look at History on Order 1 and expand <b>Process Order Notes</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1:<br>
+        • Process Order Status is <b>Processed</b>.<br>
+        • Order Logged Date is today. Order Date is today if it was empty, otherwise unchanged.<br>
+        • The last line of Process Order Notes reads “dd/mm/yyyy – Processed by [you]: 2 lines, 9 visits created, 16 sample days (report numbers [the two Report Nos]). Live on Verbal signed off by [CS Manager] (confirmed by [you])”.<br>
+        • The same text is posted as an update.<br>
+        Step 2: one History entry, “Processed · [you] · date time”, with “2 lines · 9/9 visits · 16 sample days · reports … · orders …” and the Live on Verbal line under it.</p></article>
+
+    <article class="test" data-id="G6"><header><span class="tid">G6</span><h4>Owner and finance are notified</h4><span class="tag">Two people</span><span class="role">Sales + Finance</span></header>
+      <ol><li>Your Sales colleague (Owner of Order 1) checks their monday notifications.</li>
+      <li>The Finance recipient from E3 checks theirs.</li></ol>
+      <p class="expect"><strong>You should see</strong>The owner: Your order "TEST – Sam – Order 1" has been processed – 9 visits created., followed by a link to the opportunity.<br>
+        The Finance recipient: one message, with parts separated by “ | ”:<br>
+        • Order processed: TEST – Sam – Order 1<br>
+        • Customer: TEST – Sam – Company<br>
+        • Order ref: —<br>
+        • Confirmation: Live on Verbal<br>
+        • Invoice address: …<br>
+        • Invoicing email: [your email]<br>
+        • Invoice frequency: Quarterly<br>
+        • PO expiry: —<br>
+        • Total value: £2,600.00 (£250 × 8 + £600 × 1)<br>
+        • Visits: 9<br>
+        • the link<br>
+        If Settings has no Finance recipients, nobody gets the finance message.</p></article>
+  </div>
+</section>
+
+<section id="op-retry" data-section="op-retry">
+  <div class="sechead"><h2>H. Interrupted runs and re-processing</h2><span class="who">Quotes &amp; Orders team</span></div>
+  <p>Big orders are created a batch at a time; <b>Batch size</b> in Settings sets how many visits go in each batch. If a run stops part-way, everything created so far is kept and the order shows <b>Continue processing</b>, which finishes the rest without repeating a visit or using new numbers. These tests use Order 3 (38 visits), with Batch size set to 2 so the run is slow enough to interrupt.</p>
+  <div class="callout">Never start or continue the same order in two tabs at once. Wait until one run has stopped before pressing Retry or Continue processing.</div>
+  <div class="tests">
+    <article class="test" data-id="H1"><header><span class="tid">H1</span><h4>Connection lost: Retry</h4><span class="tag">Admin</span><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Admin: set Batch size to 2, save, and write down Next Order No and Next Report No.</li>
+      <li>Open Order 3. The bar should read “Ready: 4 lines, 38 visits”. Click <b>Process order</b>, then <b>Yes, process order</b>.</li>
+      <li>When the text reaches about “Creating visit 7 of 38…”, turn your Wi-Fi off.</li>
+      <li>Turn Wi-Fi back on, wait 30 seconds, then click <b>Retry</b>.</li>
+      <li>Don’t let it finish: go straight on to H2.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 2: the count goes up about two at a time, with “Large orders can take a while. If you leave, press “Continue processing” later to finish.”<br>
+        Step 3: a red error message appears in the box (its wording depends on your browser) and the button changes to <b>Retry</b>.<br>
+        Step 4: the count carries on from where it had reached. It does not start again at 1.</p></article>
+
+    <article class="test" data-id="H2"><header><span class="tid">H2</span><h4>Leave and come back: Continue processing</h4><span class="tag">Admin</span><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>While H1’s run is still going, close the browser tab.</li>
+      <li>Wait a minute. Open the app again and open Order 3, which is still in the list.</li>
+      <li>Click <b>Continue processing</b>, then <b>Yes, process order</b>, and let it finish.</li>
+      <li>On the Visits board, search for each of Order 3’s Report Nos. Ask the admin to check Settings.</li>
+      <li>Admin: set Batch size back to 20.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 2:<br>
+        • An amber box: “Processing was started by [you] and isn’t finished yet (X of 38 visits created). Press “Continue processing” to finish – nothing will be duplicated.”<br>
+        • History shows “Processing in progress” with X/38 visits, and nothing can be edited.<br>
+        • Lines that already have some visits show “Already has N visits – skipped”. That is expected, and they are still finished.<br>
+        Step 3: the box is titled <b>Continue processing</b> and says “Picks up where the last run stopped. Visits already created are kept and not duplicated.” It ends with “This order has been processed” and 38 visits.<br>
+        Step 4: each line’s visits run from /1 with no gaps or repeats: 3 for the one-off, 3 for the 2-yearly line, 26 for the every-2-weeks line and 6 for the 6-monthly line. History has a single Processed entry, “4 lines · 38/38 visits”. The Settings numbers have moved on by exactly 4.</p></article>
+
+    <article class="test" data-id="H3"><header><span class="tid">H3</span><h4>A second tab can’t process the order again</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Open Order 2, which was resubmitted in F2, in two browser tabs.</li>
+      <li>In tab 1, process it and wait until “This order has been processed” appears.</li>
+      <li>In tab 2, which still shows the old page, click <b>Process order</b>, then <b>Yes, process order</b>.</li>
+      <li>Search the Visits board for Order 2’s Report No. Then reopen Order 2 in tab 2.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 3: tab 2 shows the red message <b>This order has already been processed.</b> and a Retry button.<br>
+        Step 4: there is still exactly one visit for Order 2, “[Report No]/1”. Reopened, tab 2 shows the green processed panel.</p></article>
+
+    <article class="test" data-id="H4"><header><span class="tid">H4</span><h4>Lines that already have visits are skipped</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>On the Opportunities board, change Order 1’s Process Order Status from Processed to <b>Awaiting Processing</b>.</li>
+      <li>Open Order 1 from Orders to process. Order 1 is Live on Verbal, so if the bar asks for the CS Manager sign-off, tick it.</li>
+      <li>Look at Lines and the bar, and preview Line A. Don’t change anything.</li>
+      <li>On the board, set Process Order Status back to <b>Processed</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 3:<br>
+        • Line A shows “Already has 8 visits – skipped” and Line B shows “Already has 1 visits – skipped”, both greyed out.<br>
+        • The preview says “This line already has visits, so nothing new will be created.”<br>
+        • Lines shows 0 lines to process, 0 visits and £0.00 total, and these lines have no line checks.<br>
+        • The bar reads <b>No lines left to process</b>, and Process order is greyed out.<br>
+        • History still shows the earlier Processed entry.</p></article>
+  </div>
+</section>
+
+<section id="op-renewal" data-section="op-renewal">
+  <div class="sechead"><h2>I. Renewals from the Contract Renewal Hub</h2><span class="who">Account manager, Quotes &amp; Orders team</span></div>
+  <p>When a renewal is made live in the Contract Renewal Hub, its Deal Stage becomes Won. Like any won deal, it then appears in Orders to process as Awaiting Processing. The renewal is a new opportunity. Its lines are copies of the previous contract’s lines, with the first-visit year moved on by the contract length and no Order No, Report No or visits yet. Processing it creates the next contract’s visits.</p>
+  <div class="tests">
+    <article class="test" data-id="I1"><header><span class="tid">I1</span><h4>A live renewal comes back to the list</h4><span class="role">Account manager + Quotes &amp; Orders team</span></header>
+      <ol><li>In the Contract Renewal Hub, renew your processed Order 1. Before making it live, use <b>Mark dead</b> on the one-off line. Then take the renewal to Live as that app’s script describes.</li>
+      <li>On the Opportunities board, look at the renewal’s Deal Stage and Process Order Status. Its name is like “TEST – Sam – Order 1 — Renewal 2029”.</li>
+      <li>In the Order Processor, find the renewal and open it.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 2: Deal Stage <b>Won</b> and Process Order Status <b>Awaiting Processing</b>.<br>
+        Step 3: the renewal is in the list. When opened:<br>
+        • Lines shows only the quarterly line. The line you marked dead is not there.<br>
+        • 1st week is still 10, and the Year has moved on by the contract length (2027 becomes 2029 for a 2-year contract).<br>
+        • Visits shows 8, not “skipped”.<br>
+        • Order details shows the invoicing details entered in the Renewal Hub.<br>
+        The previous contract, Order 1, is not in the list.</p></article>
+
+    <article class="test" data-id="I2"><header><span class="tid">I2</span><h4>Process the renewal</h4><span class="role">Quotes &amp; Orders team</span></header>
+      <ol><li>Tick any boxes the Checks panel asks for. Click <b>Process order</b>, then <b>Yes, process order</b>.</li>
+      <li>On the Visits board, search for the renewal line’s new Report No. Then search for Order 1’s original Report Nos.</li></ol>
+      <p class="expect"><strong>You should see</strong>Step 1: the box says “This will create 8 visits across 1 lines…”. The renewal line gets the next Order No and Report No from Settings, not Order 1’s numbers.<br>
+        Step 2: 8 new visits, named [new Report No]/1 to /8, in weeks 10, 23, 36 and 49 of 2029 (Yr 1) and 2030 (Yr 2). They are linked to the renewal opportunity, and their Visit Value is the renewal line’s price per visit. Sample rows are made from the copied planned samples. Order 1’s visits A/1–A/8 and B/1 are unchanged.<br>
+        The renewal has left the list.</p></article>
+  </div>
+</section>
+
+<section id="op-help">
+  <h2>Help and FAQs</h2>
+  <dl class="faq">
+    <dt>My won deal isn’t in Orders to process.</dt>
+    <dd>The list only shows orders whose Process Order Status is Awaiting Processing or Rejected, so check Deal Stage and Process Order Status on the Opportunities board. Processed orders leave the list. Search only matches the order name. The list shows 25 at a time: click <b>Load more</b> for older orders.</dd>
+    <dt>Why is Process order greyed out?</dt>
+    <dd>The text next to it says why, and so does the tip when you hover over it. The reason is one of: <b>Fix the “Must fix” items first</b>, <b>Tick “I’ve checked these” first</b>, <b>Confirm CS Manager sign-off first</b> or <b>No lines left to process</b>.</dd>
+    <dt>I can’t edit anything on the order.</dt>
+    <dd>Only the Quotes &amp; Orders team and admins can edit. Nobody can edit once the order is processed, or while a processing run is unfinished.</dd>
+    <dt>The Lines number in the list doesn’t match the order page.</dt>
+    <dd>The list counts every quote linked in 🔗Related Quotes. The order page hides lines that are Cancelled, Declined or Superseded, and renewal lines that were made dead.</dd>
+    <dt>Processing stopped part-way. What now?</dt>
+    <dd>Open the order and click <b>Continue processing</b>, or <b>Retry</b> if the box is still open. Visits already created are kept and not duplicated, and the lines keep the numbers they were given. Don’t run the same order from two tabs at once.</dd>
+    <dt>How are Order No and Report No chosen?</dt>
+    <dd>Every line gets its own Order No and Report No, taken from Next Order No and Next Report No in Settings, which then move forward by the number of lines. If those fields are blank, the app starts from the highest number on Quotes &amp; Invoices plus 1.</dd>
+    <dt>Where are the visits?</dt>
+    <dd>On the Visits board, at Visit Stage Ready for Allocation. The <b>View in Site Visit Workflow</b> button uses the board’s old name. Each visit is named Report No/visit number.</dd>
+    <dt>Why do visits 5 onwards have the same samples as visit 4?</dt>
+    <dd>The app reads the Visit 1 to Visit 4 sample numbers saved by the Quote Builder, and any later visit uses the Visit 4 numbers. Only day 1 of a visit carries samples. Extra days get empty rows.</dd>
+    <dt>My tick boxes have cleared.</dt>
+    <dd>“I’ve checked these” and the CS Manager sign-off are not saved. They clear whenever the page reloads, so tick them again just before you process.</dd>
+    <dt>Who is told what?</dt>
+    <dd><b>Submitting</b> notifies everyone on the Settings Quotes &amp; Orders team list. Admins who are not on that list are not told.<br>
+      <b>Rejecting</b> notifies the owner and the CS Manager.<br>
+      <b>Processing</b> notifies the owner and the Finance recipients, and posts an update on the opportunity.</dd>
+    <dt>Can I undo processing?</dt>
+    <dd>Not in the app. For TEST orders, ask an admin to delete the TEST visits and sample rows. Never process a real client’s order while testing.</dd>
+  </dl>
+</section>
+
+<section id="finish">
+  <h2>Send your results</h2>
+  <p>When you have finished, copy your results and paste them into an email to the Mutherboard project team. Include links or screenshots for any failures.</p>
+  <div class="actions">
+    <button class="btn" id="copyBtn" type="button">Copy my results</button>
+    <button class="btn ghost" id="clearBtn" type="button">Clear my marks</button>
+    <span class="status-msg" id="statusMsg" role="status"></span>
+  </div>
+  <label for="resultsText" class="who">Your results (also here to select and copy by hand)</label>
+  <textarea id="resultsText" readonly></textarea>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  var KEY = 'assurity-uat-op-v1';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+  var labels = {pass:'Pass', fail:'Fail', blocked:'Blocked'};
+  var tests = Array.prototype.slice.call(document.querySelectorAll('.test'));
+
+  ['testerName','testerRole'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.value = (state._meta && state._meta[id]) || '';
+    el.addEventListener('input', function(){ state._meta = state._meta || {}; state._meta[id] = el.value; save(); render(); });
+  });
+
+  tests.forEach(function(t){
+    var id = t.getAttribute('data-id');
+    var row = document.createElement('div'); row.className = 'controls';
+    var seg = document.createElement('div'); seg.className = 'seg'; seg.setAttribute('role','group'); seg.setAttribute('aria-label','Result for ' + id);
+    Object.keys(labels).forEach(function(v){
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = labels[v]; b.setAttribute('data-v', v);
+      b.addEventListener('click', function(){
+        state[id] = state[id] || {};
+        state[id].s = state[id].s === v ? '' : v;
+        save(); paint(t); render();
+      });
+      seg.appendChild(b);
+    });
+    var note = document.createElement('textarea'); note.id = 'note-' + id; note.rows = 1;
+    note.placeholder = 'Notes: what you saw, item link…'; note.setAttribute('aria-label','Notes for ' + id);
+    note.value = (state[id] && state[id].n) || '';
+    note.addEventListener('input', function(){ state[id] = state[id] || {}; state[id].n = note.value; save(); render(); });
+    row.appendChild(seg); row.appendChild(note); t.appendChild(row);
+    paint(t);
+  });
+
+  function paint(t){
+    var s = (state[t.getAttribute('data-id')] || {}).s || '';
+    if (s) t.setAttribute('data-status', s); else t.removeAttribute('data-status');
+    t.querySelectorAll('.seg button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === s)); });
+  }
+
+  function render(){
+    var p=0,f=0,b=0,n=tests.length;
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      var ts = sec.querySelectorAll('.test'), done = 0;
+      ts.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if (s) done++; });
+      var c = document.querySelector('[data-count="' + sec.getAttribute('data-section') + '"]');
+      if (c) c.textContent = done + '/' + ts.length;
+    });
+    tests.forEach(function(t){ var s=(state[t.getAttribute('data-id')]||{}).s; if(s==='pass')p++; else if(s==='fail')f++; else if(s==='blocked')b++; });
+    document.getElementById('overallText').textContent = (p+f+b) + ' / ' + n;
+    document.getElementById('barP').style.width = (100*p/n) + '%';
+    document.getElementById('barF').style.width = (100*f/n) + '%';
+    document.getElementById('barB').style.width = (100*b/n) + '%';
+    document.getElementById('resultsText').value = resultsText(p,f,b,n);
+  }
+
+  function resultsText(p,f,b,n){
+    var m = state._meta || {};
+    var lines = ['Assurity Consulting monday.com UAT results – Order Processor',
+      'Tester: ' + (m.testerName || '(name not entered)') + (m.testerRole ? ' (' + m.testerRole + ')' : ''),
+      'Date: ' + new Date().toLocaleDateString('en-GB'),
+      'Pass ' + p + ' · Fail ' + f + ' · Blocked ' + b + ' · Not run ' + (n-p-f-b) + ' of ' + n, ''];
+    document.querySelectorAll('section[data-section]').forEach(function(sec){
+      lines.push('== ' + sec.querySelector('h2').textContent + ' ==');
+      sec.querySelectorAll('.test').forEach(function(t){
+        var id = t.getAttribute('data-id'), r = state[id] || {};
+        var line = id + ' ' + t.querySelector('h4').textContent + ': ' + (r.s ? labels[r.s] : 'Not run');
+        if (r.n) line += ' | ' + r.n.replace(/\s+/g,' ').trim();
+        lines.push(line);
+      });
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  var msg = document.getElementById('statusMsg');
+  document.getElementById('copyBtn').addEventListener('click', function(){
+    var ta = document.getElementById('resultsText'), text = ta.value;
+    function fallback(){ ta.focus(); ta.select(); msg.textContent = 'Results selected. Press Ctrl+C (or Cmd+C) to copy.'; }
+    try {
+      navigator.clipboard.writeText(text).then(function(){ msg.textContent = 'Copied. Paste into your email.'; }, fallback);
+    } catch (e) { fallback(); }
+  });
+  var armed = false, clearBtn = document.getElementById('clearBtn');
+  clearBtn.addEventListener('click', function(){
+    if (!armed){ armed = true; clearBtn.textContent = 'Click again to clear all marks'; msg.textContent = 'This removes every mark and note in this browser.';
+      setTimeout(function(){ armed = false; clearBtn.textContent = 'Clear my marks'; }, 5000); return; }
+    var meta = state._meta; state = meta ? {_meta: meta} : {}; save();
+    tests.forEach(function(t){ paint(t); var nt = t.querySelector('textarea'); if (nt) nt.value = ''; });
+    armed = false; clearBtn.textContent = 'Clear my marks'; msg.textContent = 'Marks cleared.'; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>
