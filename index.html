@@ -721,10 +721,11 @@ a:hover .d-app{stroke-width:2}
 <!-- ============ K. RENEWALS ============ -->
 <section id="renewals" data-section="renewals">
   <div class="sechead"><h2>K. Contract Renewal Hub</h2><span class="kind app">App</span><span class="who">Account managers, CS managers, QC reviewers</span></div>
-  <p>Six months before a contract’s 🟠Renewal Date, the owner is reminded to start the renewal. In the Renewal Hub, <b>Copy Forward</b> creates the renewal: a new opportunity linked to the old one, with every active line copied into the next contract period. You then review prices, check the planned work, pass it through quality check, send it to the client and, once accepted, make it live. A live renewal goes back to the Order Processor, so its visits are created like any new order.</p>
+  <p>Six months before a contract’s 🟠Renewal Date, the owner is reminded to start the renewal. In the Renewal Hub, <b>Copy Forward</b> creates the renewal: a new opportunity linked to the old one, with every active line copied into the next contract period. You then review prices, check the planned work, pass it through quality check and send it to the client. Once the client accepts, you record their order details, run the anomaly check and make the renewal live. A live renewal goes back to the Order Processor, so its visits are created like any new order.</p>
   <h3>Renewal stages</h3>
-  <div class="stages"><span>Not Started</span><i>→</i><span>In Progress</span><i>→</i><span>Pending Quality Check</span><i>→</i><span>Send Documents to Customer</span><i>→</i><span>Waiting for Renewal</span><i>→</i><span>Live</span></div>
+  <div class="stages"><span>Not Started</span><i>→</i><span>In Progress</span><i>→</i><span>Pending Quality Check</span><i>→</i><span>Send Documents to Customer</span><i>→</i><span>Waiting for Renewal</span><i>→</i><span>Anomaly Check / Before-After Reporting</span><i>→</i><span>Live</span></div>
   <p>A reviewer can send it back with <b>Returned to Consultant</b>. When the renewal goes live, the old contract is marked <b>Reported</b>.</p>
+  <p>Contract values on the <b>Price Change</b> tab are worked out from the lines: price per visit × visits per year × contract years, with one-off lines counted once.</p>
 
   <div class="tests">
     <article class="test" data-id="K1"><header><span class="tid">K1</span><h4>Renewal reminder</h4><span class="tag">Overnight</span><span class="role">Account manager</span></header>
@@ -745,15 +746,15 @@ a:hover .d-app{stroke-width:2}
 
     <article class="test" data-id="K5"><header><span class="tid">K5</span><h4>A contract can only be copied once</h4><span class="role">Account manager</span></header>
       <ol><li>Go back to the original contract and try Copy Forward again.</li></ol>
-      <p class="expect"><strong>You should see</strong>A message that a renewal already exists. No second copy is made.</p></article>
+      <p class="expect"><strong>You should see</strong>The original contract no longer has a <b>Copy Forward</b> button. In its place you see <b>Renewal created</b> and an <b>Open renewal</b> button that takes you to the renewal. No second renewal is made.</p></article>
 
     <article class="test" data-id="K6"><header><span class="tid">K6</span><h4>Apply a price change</h4><span class="role">Account manager</span></header>
-      <ol><li>On the renewal, open <b>Price Change</b>, choose <b>Increase</b>, enter 5% and apply it to all lines.</li><li>Then click <b>Undo Last Change</b>, and apply it again.</li></ol>
-      <p class="expect"><strong>You should see</strong>Every line’s price goes up by 5%, with the old price kept in 🟠Previous Selling Price. Undo restores the old prices.</p></article>
+      <ol><li>On the renewal, open the <b>Price Change</b> tab and note <b>Previous Value</b> and <b>New Value</b> on the Contract Value card.</li><li>Enter 5 in <b>Price Change %</b>, leave Direction <b>Increase</b> and Scope <b>All Services</b>, click <b>Apply Price Change</b> and confirm.</li><li>Click <b>Undo Last Change</b> and confirm, then apply the 5% again.</li></ol>
+      <p class="expect"><strong>You should see</strong>Before the change, Previous Value and New Value are the same, because the renewal’s lines are copies of the old contract’s lines. After it, every line’s price is 5% higher (🟠Previous Selling Price still shows the old contract’s price), New Value is 5% higher than Previous Value and Difference shows <b>+5.0%</b>. Undo puts the prices and New Value back.</p></article>
 
     <article class="test" data-id="K7"><header><span class="tid">K7</span><h4>Add a new line to the renewal</h4><span class="role">Account manager</span></header>
-      <ol><li>Use <b>Add Quote Line</b> to add a new work type at Site A, including its first visit week and days.</li></ol>
-      <p class="expect"><strong>You should see</strong>The new line appears with 🟠Renewal Line Status <b>New</b>.</p></article>
+      <ol><li>On the renewal’s <b>Quotes &amp; Invoices</b> tab, click <b>Add Line</b>.</li><li>Pick Site A and a work type you have not used yet. The list is the same as in the Quote Builder.</li><li>Set Frequency <b>Repeat</b>, Visit Frequency <b>Yearly</b>, a First Visit — Week Number, Planned Days per Visit <b>1</b> and a price, then add the line.</li><li>Open the <b>Price Change</b> tab.</li></ol>
+      <p class="expect"><strong>You should see</strong>The new line in the list with 🟠Renewal Line Status <b>New</b>. On the board it has the same Quote No as the other renewal lines, its Work Category, your week number and days per visit, and the renewal’s Owner as Assigned Consultant. New Value has gone up by the line’s price × the number of contract years.</p></article>
 
     <article class="test" data-id="K8"><header><span class="tid">K8</span><h4>Quality check</h4><span class="role">Account manager + QC reviewer</span></header>
       <ol><li>Click <b>Submit for quality check</b>.</li><li>As the reviewer, return it once with feedback, then resubmit and <b>Pass QC</b>.</li></ol>
@@ -763,9 +764,17 @@ a:hover .d-app{stroke-width:2}
       <ol><li>Click <b>Send proposal to customer</b> (or <b>Mark proposal sent</b> if you sent it another way).</li></ol>
       <p class="expect"><strong>You should see</strong>The proposal method, sender and date are recorded, and Renewal Stage moves to Waiting for Renewal.</p></article>
 
-    <article class="test" data-id="K10"><header><span class="tid">K10</span><h4>Make the renewal live</h4><span class="role">Account manager</span></header>
-      <ol><li>Record how the client accepted (e.g. Purchase Order Document with a PO number, and the PO expiry type), then click <b>Make Contract Live</b>.</li></ol>
-      <p class="expect"><strong>You should see</strong>The renewal shows Deal Stage <b>Won</b>, Renewal Stage <b>Live</b> and Process Order Status <b>Awaiting Processing</b>. The original contract shows Renewal Stage <b>Reported</b>.</p></article>
+    <article class="test" data-id="K10"><header><span class="tid">K10</span><h4>Record the client’s acceptance</h4><span class="role">Account manager</span></header>
+      <ol><li>With the renewal at <b>Waiting for Renewal</b>, find the <b>Customer Accepted</b> panel on the Overview tab.</li><li>Choose Order Confirmation Type <b>Purchase Order Document</b> and enter a PO number (e.g. TEST-PO-002), your own email as Invoicing Email, an Invoice Frequency, a PO Expiry Type and an Invoice Address.</li><li>Click <b>Complete &amp; Continue to Anomaly Check</b>.</li></ol>
+      <p class="expect"><strong>You should see</strong>Renewal Stage moves to <b>Anomaly Check / Before-After Reporting</b>. The Overview now shows the <b>Anomaly Check</b> panel and, below it, <b>Contract Readiness</b>, the <b>Before/After Report</b> and the <b>Make Contract Live</b> panel. The details you entered are saved on the renewal.</p></article>
+
+    <article class="test" data-id="K10a"><header><span class="tid">K10a</span><h4>Run the anomaly check</h4><span class="role">Account manager</span></header>
+      <ol><li>On the <b>Quotes &amp; Invoices</b> board, clear the Assigned Consultant on one of the renewal’s lines. Reload the renewal.</li><li>In the <b>Anomaly Check</b> panel, click <b>Run Anomaly Check</b>.</li><li>Put the Assigned Consultant back, reload, and click <b>Run Anomaly Check</b> again.</li></ol>
+      <p class="expect"><strong>You should see</strong>First run: status <b>Issue Found</b>, with that line under <b>Issues by Line</b> as Unassigned or Ex-Employee Assignment, “No consultant assigned”. You and the company’s Account Manager are notified, the issues are posted as an update on the renewal, and Contract Readiness lists “Anomaly check must be Cleared”. Second run: “All checks passed ✓” and status <b>Cleared</b>, and 🟠Anomaly Check Status on the board shows Cleared.</p></article>
+
+    <article class="test" data-id="K10b"><header><span class="tid">K10b</span><h4>Make the contract live</h4><span class="role">Account manager</span></header>
+      <ol><li>Read <b>Contract Readiness</b>. If it lists anything under “Requirements not met”, fix it and reload.</li><li>Click <b>Make Contract Live</b>, check the details in the dialog and click <b>Confirm &amp; Go Live</b>.</li><li>Open the renewal and the original contract on the Opportunities board.</li></ol>
+      <p class="expect"><strong>You should see</strong>“All checks passed — ready to go live” before you start, then a <b>Contract is live</b> card listing what was done and who was notified. The renewal shows Deal Stage <b>Won</b>, Renewal Stage <b>Live</b> and Process Order Status <b>Awaiting Processing</b>, with an update “Contract made live by [you]”. The original contract shows Renewal Stage <b>Reported</b>.</p></article>
 
     <article class="test" data-id="K11"><header><span class="tid">K11</span><h4>Process the renewal</h4><span class="role">Quotes &amp; Orders</span></header>
       <ol><li>In the <b>Order Processor</b>, find the renewal in Orders to process and submit it (repeat F2 to F6).</li><li>In the Sample Planner’s <b>Lab view</b>, check the renewal’s expected samples.</li></ol>
